@@ -1,0 +1,111 @@
+timestamp,invoice_number,seller_nip,raw_text,category
+2026-10-01 13:05:57,FV/EDGE/2026/1000,3753968797,"FAKTURA VAT: FV/EDGE/2026/1000
+Data wystawienia: 2026-09-29
+Miejsce wystawienia: Warszawa
+Sprzedawca: Nabywca:
+Firma Krzak sp. z o.o. Nasza Korporacja S.A.
+NIP: 3753968797 NIP: 1112223344
+ul. Technologiczna 12/4 ul. Biznesowa 1
+00-001 Warszawa 00-999 Warszawa
+Pozycje na fakturze:
+1. Wynajem przestrzeni na archiwum dokumentow papierowych
+Kwota brutto do zaplaty: 3865.33 PLN",OFFICE_SUPPLIES
+2026-10-01 13:06:03,FV/EDGE/2026/1001,8583613460,"FAKTURA VAT: FV/EDGE/2026/1001
+Data wystawienia: 2026-09-29
+Miejsce wystawienia: Warszawa
+Sprzedawca: Nabywca:
+Firma Krzak sp. z o.o. Nasza Korporacja S.A.
+NIP: 8583613460 NIP: 1112223344
+ul. Technologiczna 12/4 ul. Biznesowa 1
+00-001 Warszawa 00-999 Warszawa
+Pozycje na fakturze:
+1. Zakup podkladek pod myszki oraz ziaren kawy Arabica
+Kwota brutto do zaplaty: 11896.86 PLN",OFFICE_SUPPLIES
+2026-10-01 13:06:08,FV/EDGE/2026/1006,1069346295,"FAKTURA VAT: FV/EDGE/2026/1006
+Data wystawienia: 2026-09-29
+Miejsce wystawienia: Warszawa
+Sprzedawca: Nabywca:
+Firma Krzak sp. z o.o. Nasza Korporacja S.A.
+NIP: 1069346295 NIP: 1112223344
+ul. Technologiczna 12/4 ul. Biznesowa 1
+00-001 Warszawa 00-999 Warszawa
+Pozycje na fakturze:
+1. Szkolenie z MS Excel dla kierowcow floty regionalnej
+Kwota brutto do zaplaty: 4916.29 PLN",IT_SERVICES
+2026-10-01 13:06:33,FV/EDGE/2026/1008,6206295047,"FAKTURA VAT: FV/EDGE/2026/1008
+Data wystawienia: 2026-09-29
+Miejsce wystawienia: Warszawa
+Sprzedawca: Nabywca:
+Firma Krzak sp. z o.o. Nasza Korporacja S.A.
+NIP: 6206295047 NIP: 1112223344
+ul. Technologiczna 12/4 ul. Biznesowa 1
+00-001 Warszawa 00-999 Warszawa
+Pozycje na fakturze:
+1. Konsultacje technologiczno-organizacyjne za Q3
+Kwota brutto do zaplaty: 8990.46 PLN",IT_SERVICES
+2026-10-01 13:06:37,FV/EDGE/2026/1009,4109659063,"FAKTURA VAT: FV/EDGE/2026/1009
+Data wystawienia: 2026-09-29
+Miejsce wystawienia: Warszawa
+Sprzedawca: Nabywca:
+Firma Krzak sp. z o.o. Nasza Korporacja S.A.
+NIP: 4109659063 NIP: 1112223344
+ul. Technologiczna 12/4 ul. Biznesowa 1
+00-001 Warszawa 00-999 Warszawa
+Pozycje na fakturze:
+1. Zakup podkladek pod myszki oraz ziaren kawy Arabica
+Kwota brutto do zaplaty: 10655.53 PLN",OFFICE_SUPPLIES
+2026-10-01 13:06:46,FV/EDGE/2026/1010,1638146124,"FAKTURA VAT: FV/EDGE/2026/1010
+Data wystawienia: 2026-09-29
+Miejsce wystawienia: Warszawa
+Sprzedawca: Nabywca:
+Firma Krzak sp. z o.o. Nasza Korporacja S.A.
+NIP: 1638146124 NIP: 1112223344
+ul. Technologiczna 12/4 ul. Biznesowa 1
+00-001 Warszawa 00-999 Warszawa
+Pozycje na fakturze:
+1. Oplata manipulacyjna za przekroczenie limitu chmury
+Kwota brutto do zaplaty: 11537.54 PLN",IT_SERVICES
+2026-10-01 13:06:52,FV/EDGE/2026/1011,8803305185,"FAKTURA VAT: FV/EDGE/2026/1011
+Data wystawienia: 2026-09-29
+Miejsce wystawienia: Warszawa
+Sprzedawca: Nabywca:
+Firma Krzak sp. z o.o. Nasza Korporacja S.A.
+NIP: 8803305185 NIP: 1112223344
+ul. Technologiczna 12/4 ul. Biznesowa 1
+00-001 Warszawa 00-999 Warszawa
+Pozycje na fakturze:
+1. Zakup podkladek pod myszki oraz ziaren kawy Arabica
+Kwota brutto do zaplaty: 7002.17 PLN",OFFICE_SUPPLIES
+2026-10-01 13:06:59,FV/EDGE/2026/1012,4137201069,"FAKTURA VAT: FV/EDGE/2026/1012
+Data wystawienia: 2026-09-29
+Miejsce wystawienia: Warszawa
+Sprzedawca: Nabywca:
+Firma Krzak sp. z o.o. Nasza Korporacja S.A.
+NIP: 4137201069 NIP: 1112223344
+ul. Technologiczna 12/4 ul. Biznesowa 1
+00-001 Warszawa 00-999 Warszawa
+Pozycje na fakturze:
+1. Szkolenie z MS Excel dla kierowcow floty regionalnej
+Kwota brutto do zaplaty: 805.03 PLN",IT_SERVICES
+2026-10-01 13:07:06,FV/EDGE/2026/1014,9299295582,"FAKTURA VAT: FV/EDGE/2026/1014
+Data wystawienia: 2026-09-29
+Miejsce wystawienia: Warszawa
+Sprzedawca: Nabywca:
+Firma Krzak sp. z o.o. Nasza Korporacja S.A.
+NIP: 9299295582 NIP: 1112223344
+ul. Technologiczna 12/4 ul. Biznesowa 1
+00-001 Warszawa 00-999 Warszawa
+Pozycje na fakturze:
+1. Wynajem przestrzeni na archiwum dokumentow papierowych
+Kwota brutto do zaplaty: 2136.24 PLN",OFFICE_SUPPLIES
+2026-10-01 13:19:22,FV/EDGE/2026/1000,3753968797,"FAKTURA VAT: FV/EDGE/2026/1000
+Data wystawienia: 2026-09-29
+Miejsce wystawienia: Warszawa
+Sprzedawca: Nabywca:
+Firma Krzak sp. z o.o. Nasza Korporacja S.A.
+NIP: 3753968797 NIP: 1112223344
+ul. Technologiczna 12/4 ul. Biznesowa 1
+00-001 Warszawa 00-999 Warszawa
+Pozycje na fakturze:
+1. Wynajem przestrzeni na archiwum dokumentow papierowych
+Kwota brutto do zaplaty: 3865.33 PLN",OFFICE_SUPPLIES

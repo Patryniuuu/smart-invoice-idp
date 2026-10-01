@@ -1,0 +1,27 @@
+# Interfejs aplikacji
+streamlit
+
+# Przetwarzanie i walidacja danych
+pandas
+numpy
+pydantic>=2.0.0
+python-dotenv
+
+# Praca z dokumentami PDF
+pdfplumber
+reportlab
+faker
+
+# Uczenie maszynowe
+scikit-learn==1.5.1
+xgboost==2.1.1
+joblib
+
+# MLOps i Rejestr Modeli
+mlflow
+skops
+
+# Integracja z LLM (Nowe SDK Google)
+google-genai
+
+pytest

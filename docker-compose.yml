@@ -1,0 +1,12 @@
+services:
+  app:
+    build: .
+    container_name: invoice-app
+    ports:
+      - "8501:8501"
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - ./xgboost_pipeline.pkl:/app/xgboost_pipeline.pkl
+    restart: unless-stopped

@@ -1,0 +1,3 @@
+timestamp,invoice_number,seller_nip,raw_text,category
+2026-09-30 15:30:00,FV/TEST/001,1234567890,Faktura VAT: FV/TEST/001 Sprzedawca: ABC IT Wynajem serwerów chmurowych i wsparcie techniczne,IT_SERVICES
+2026-09-30 15:31:00,FV/TEST/002,9876543210,Faktura VAT: FV/TEST/002 Sprzedawca: Biuro Hurt Papier xero skoroszyty segregatory dlugopisy,OFFICE_SUPPLIES

@@ -1,0 +1,11 @@
+timestamp,invoice_number,seller_nip,raw_text,category
+2026-10-01 12:34:42,FV/1976/9564,2424124787,"FAKTURA VAT: FV/1976/9564
+Data wystawienia: 2026-07-20
+SPRZEDAWCA:
+Nazwa: Zaguna-Nikonajuk Sp. z o.o.
+NIP: 2424124787
+Pozycja Netto [PLN] VAT Brutto [PLN]
+Papier ksero A4 5 ryz 484.68 23% 596.16
+Razem Netto: 484.68 PLN
+Razem VAT: 111.48 PLN
+DO ZAPLATY: 596.16 PLN",OFFICE_SUPPLIES
