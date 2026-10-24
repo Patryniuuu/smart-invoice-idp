@@ -1,0 +1,26 @@
+artifact_path: file:///C:/Users/48666/Desktop/Patryk/python/Projekty/smart-invoice-idp/mlruns/1/models/m-e463e42bf2804007822f056ea7e0b96e/artifacts
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.skops
+    predict_fn: predict
+    python_version: 3.12.0
+  sklearn:
+    code: null
+    pickled_model: model.skops
+    serialization_format: skops
+    sklearn_version: 1.5.1
+    skops_trusted_types:
+    - sklearn.compose._column_transformer._RemainderColsList
+    - xgboost.core.Booster
+    - xgboost.sklearn.XGBClassifier
+mlflow_version: 3.16.1
+model_id: m-e463e42bf2804007822f056ea7e0b96e
+model_size_bytes: 1009651
+model_uuid: m-e463e42bf2804007822f056ea7e0b96e
+prompts: null
+run_id: 3278b4d123df45d995d27a486e37a3de
+utc_time_created: '2026-09-30 15:07:16.125605'
