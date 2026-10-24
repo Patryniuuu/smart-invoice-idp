@@ -9,7 +9,9 @@ try:
     from dotenv import load_dotenv
     load_dotenv()
 except ImportError:
-    pass # Na Streamlit Cloud korzystamy ze wbudowanych Secrets
+    # Fallback, jeśli python-dotenv nie jest zainstalowany (np. na Streamlit Cloud)
+    def load_dotenv():
+        pass # Na Streamlit Cloud korzystamy ze wbudowanych Secrets
 
 # 1. Środowisko i ścieżki importu
 load_dotenv()
