@@ -100,21 +100,28 @@ def train_active_learning():
             "message": f"Feedback zawiera nieznane kategorie: {unknown_classes}"
         }
         
-    X_train_base, X_test, y_train_base, y_test = train_test_split(X, y_encoded, test_size=0.2, random_state=42, stratify=y_encoded)
+    # Pierwsze 1000 rekordów stanowi niezmienny zbiór bazowy (gwarantuje stały Golden Set X_test)
+    X_initial = X.iloc[:1000]
+    y_initial = y_encoded[:1000]
+    X_prev_fb = X.iloc[1000:]
+    y_prev_fb = y_encoded[1000:]
+
+    X_train_base, X_test, y_train_base, y_test = train_test_split(
+        X_initial, y_initial, test_size=0.2, random_state=42, stratify=y_initial
+    )
     
     X_fb = human_fb[["seller_nip", "raw_text"]].copy()
     X_fb["seller_nip"] = X_fb["seller_nip"].astype(str)
-    
-    X_train_full = pd.concat([X_train_base, X_fb], ignore_index=True)
-    
-    #poki co Xtrain_full ma 820 wierszy a y_train_base 800, musze dolaczyc jeszcze pozostale z human_fb
     y_fb_encoded = label_encoder.transform(y_fb)
-    y_train_full = np.concatenate([y_train_base, y_fb_encoded]) 
-    #teraz y_train_full ma 820 wierszy
     
-    weights_base = [1.0] * len(X_train_base)    # lista 800 jedynek
-    weights_fb = [4.0] * len(human_fb)          # lista 20 czwórek
-    sample_weights = weights_base + weights_fb   # złączona lista 820 wag   
+    X_train_full = pd.concat([X_train_base, X_prev_fb, X_fb], ignore_index=True)
+    y_train_full = np.concatenate([y_train_base, y_prev_fb, y_fb_encoded])
+    
+    weights_base = [1.0] * len(X_train_base)
+    weights_prev_fb = [4.0] * len(X_prev_fb)
+    weights_fb = [4.0] * len(human_fb)
+    sample_weights = weights_base + weights_prev_fb + weights_fb
+    
     
     run_timestamp = datetime.now().strftime('%Y%m%d_%H%M')
     with mlflow.start_run(run_name=f"active_learning_{run_timestamp}"):

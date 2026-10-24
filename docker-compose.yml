@@ -3,7 +3,7 @@ services:
     build: .
     container_name: invoice-app
     ports:
-      - "8501:8501"
+      - "8501:7860"
     env_file:
       - .env
     volumes:

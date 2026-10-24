@@ -4,24 +4,30 @@ import os
 from datetime import datetime
 
 def save_feedback(invoice_number, correct_category, seller_nip, raw_text):
-    """Zapisuje ręczną korektę do pliku CSV (pętla sprzężenia zwrotnego dla ML)."""
+    """Zapisuje ręczną korektę do pliku CSV bez duplikatów."""
     feedback_file = "data/human_feedback.csv"
-    
     os.makedirs("data", exist_ok=True)
     
     new_data = pd.DataFrame([{
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "invoice_number": invoice_number,
-        "seller_nip": seller_nip,       # <-- NOWE POLE (cecha kategoryczna)
-        "raw_text": raw_text,           # <-- NOWE POLE (cecha tekstowa do TF-IDF)
+        "invoice_number": str(invoice_number),
+        "seller_nip": str(seller_nip),
+        "raw_text": raw_text,
         "category": correct_category
     }])
     
-    if not os.path.exists(feedback_file):
-        new_data.to_csv(feedback_file, index=False)
-    else:
-        new_data.to_csv(feedback_file, mode='a', header=False, index=False)
-
+    if os.path.exists(feedback_file) and os.path.getsize(feedback_file) > 0:
+        try:
+            existing_df = pd.read_csv(feedback_file, dtype={"seller_nip": str, "invoice_number": str})
+            combined_df = pd.concat([existing_df, new_data], ignore_index=True)
+            combined_df = combined_df.drop_duplicates(subset=["invoice_number"], keep="last")
+            combined_df.to_csv(feedback_file, index=False)
+            return
+        except Exception:
+            pass
+            
+    new_data.to_csv(feedback_file, index=False)
+    
 def render_report(report):
     """Renderuje kokpit analityczny na podstawie obiektu ProcessingReport."""
     

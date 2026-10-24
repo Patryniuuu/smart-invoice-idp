@@ -67,12 +67,11 @@ def main():
             help="Poniżej tej wartości faktura trafia do weryfikacji przez Gemini LLM lub człowieka."
         )
         
+        
         # Synchronizacja progu z routerem w backendzie
-        if hasattr(orchestrator, 'router') and hasattr(orchestrator.router, 'confidence_threshold'):
-            orchestrator.router.confidence_threshold = confidence_threshold
-        elif hasattr(orchestrator, 'confidence_threshold'):
-            orchestrator.confidence_threshold = confidence_threshold
-
+        if hasattr(orchestrator, 'router') and hasattr(orchestrator.router, 'threshold'):
+            orchestrator.router.threshold = confidence_threshold
+            
         st.markdown("---")
         st.subheader("📡 Status Usług")
         st.write("✅ XGBoost: Załadowany")
@@ -97,6 +96,12 @@ def main():
         else:
             st.caption("Zbierz korekty w kolejce akceptacji, aby odblokować retrening.")
 
+        if "last_retrain_result" in st.session_state:
+            res = st.session_state.pop("last_retrain_result")
+            st.success(f"✅ {res['message']}")
+            st.write(f"• **F1 Golden:** {res['f1_macro']:.4f}")
+            st.write(f"• **Slice Accuracy:** {res['slice_accuracy'] * 100:.1f}%")
+
         if st.button("🔄 Uruchom retrening modelu", disabled=not can_retrain, use_container_width=True):
             with st.spinner("Trenowanie i ewaluacja modelu w DagsHub..."):
                 result = train_active_learning()
@@ -104,16 +109,10 @@ def main():
             status = result.get("status")
             
             if status == "SUCCESS":
-                st.success(f"✅ {result['message']}")
-                st.write(f"• **F1 Golden:** {result['f1_macro']:.4f}")
-                st.write(f"• **Slice Accuracy:** {result['slice_accuracy'] * 100:.1f}%")
-                
-                # 1. Kluczowe: czyszczenie pamięci podręcznej Streamlita
+                st.session_state["last_retrain_result"] = result
                 st.cache_resource.clear()
-                
-                # 2. Przeładowanie stanu interfejsu (licznik wróci do 0/20)
                 st.rerun()
-                
+                                
             elif status == "FAILED":
                 st.error(f"❌ {result['message']}")
                 st.write(f"• F1: {result.get('f1_macro', 0):.4f} | Slice: {result.get('slice_accuracy', 0):.2f}")
@@ -213,16 +212,19 @@ def main():
         col5.metric("Poprawione ręcznie", stats.get("RESOLVED_BY_HUMAN", 0))
 
         st.markdown("---")
-        st.dataframe(df, use_container_width=True)
+        display_df = df.drop(columns=["raw_text"], errors="ignore")
+        st.dataframe(display_df, use_container_width=True)
 
-        csv_data = df.to_csv(index=False).encode('utf-8')
+        approved_statuses = ["XGBOOST_FAST_TRACK", "LLM_FALLBACK", "RESOLVED_BY_HUMAN"]
+        erp_df = display_df[display_df["Status"].isin(approved_statuses)]
+        csv_data = erp_df.to_csv(index=False).encode('utf-8')
         st.download_button(
-            label="📥 Pobierz plik integracyjny CSV dla ERP",
+            label=f"📥 Pobierz plik integracyjny CSV dla ERP ({len(erp_df)} zatwierdzonych)",
             data=csv_data,
             file_name="import_erp_faktury.csv",
             mime="text/csv",
         )
-
+        
         # Kolejka weryfikacji z podglądem PDF
         manual_df = df[df['Status'] == 'MANUAL_REVIEW']
         if not manual_df.empty:

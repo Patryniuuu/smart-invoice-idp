@@ -289,7 +289,7 @@ def generate_dataset(num_invoices: int = 50):
 
 def main():
     """Główna pętla sterująca."""
-    generate_dataset(num_invoices=1000)    
+    generate_dataset(num_invoices=250)    
     print("Gotowe! Wygenerowano pliki PDF oraz data/dataset_labels.csv.")
 
 if __name__ == "__main__":

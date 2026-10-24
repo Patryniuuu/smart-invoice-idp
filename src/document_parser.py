@@ -58,7 +58,7 @@ class InvoiceParser:
         self._patterns = {
             "invoice_number": re.compile(r"FAKTURA VAT(?: NR)?:\s*(\S+)"),
             "issue_date": re.compile(r"Data wystawienia:\s*(\d{4}-\d{2}-\d{2})"),
-            "seller_name": re.compile(r"(?:Nazwa|Sprzedawca):\s*([^\n]+)"),
+            "seller_name": re.compile(r"(?:Nazwa:\s*([^\n]+)|Sprzedawca:[^\n]*\n\s*([^\n]+))"),
             "seller_nip": re.compile(r"NIP:\s*(\d{10})"),
             "total_net": re.compile(r"Razem Netto:\s*([\d\.]+)\s*PLN"),
             "total_vat": re.compile(r"Razem VAT:\s*([\d\.]+)\s*PLN"),
@@ -82,8 +82,9 @@ class InvoiceParser:
         match = pattern.search(text)
         if not match:
             raise ValueError(f"Nie udało się odnaleźć pola '{field_name}' w dokumencie.")
-        return match.group(1).strip()
-
+        val = next((g for g in match.groups() if g is not None), "")
+        return val.strip()
+    
     def parse(self, pdf_path: str) -> ParsedInvoice:
         raw_text = self.extract_raw_text(pdf_path)
 

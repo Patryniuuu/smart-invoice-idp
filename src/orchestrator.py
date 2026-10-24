@@ -26,7 +26,7 @@ class ProcessingReport(BaseModel):
     final_confidence: float
     decision_path: Literal["XGBOOST_FAST_TRACK", "LLM_FALLBACK", "MANUAL_REVIEW", "PARSER_REJECTED"]
     reasoning: str
-    raw_text: str
+    raw_text: str = ""
 
 
 #tworzymy drzewo decyzji
@@ -154,7 +154,8 @@ class InvoicePipelineOrchestrator:
                 final_category="UNKNOWN",
                 final_confidence=0.0,
                 decision_path = "PARSER_REJECTED",
-                reasoning=f"Błąd walidacji lub parsowania: {str(e)}"
+                reasoning=f"Błąd walidacji lub parsowania: {str(e)}",
+                raw_text=""
             )
             
             

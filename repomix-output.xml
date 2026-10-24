@@ -1,0 +1,2435 @@
+This file is a merged representation of a subset of the codebase, containing files not matching ignore patterns, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of a subset of the repository's contents that is considered the most important context.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching these patterns are excluded: data
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+app/
+  components/
+    dashboard.py
+  main_ui.py
+mlruns/
+  1/
+    models/
+      m-3f350ca04061421586af269511d46f22/
+        artifacts/
+          conda.yaml
+          MLmodel
+          model.skops
+          python_env.yaml
+          requirements.txt
+      m-613ad32c6f8b48c698ebcb86fbfeba4a/
+        artifacts/
+          conda.yaml
+          MLmodel
+          model.skops
+          python_env.yaml
+          requirements.txt
+      m-62df2f8c68714c0c8fd64af342c8dd4e/
+        artifacts/
+          conda.yaml
+          MLmodel
+          model.skops
+          python_env.yaml
+          requirements.txt
+      m-c7fdef4ac44e462195f6d6b3c7ee26e4/
+        artifacts/
+          conda.yaml
+          MLmodel
+          model.skops
+          python_env.yaml
+          requirements.txt
+      m-e463e42bf2804007822f056ea7e0b96e/
+        artifacts/
+          conda.yaml
+          MLmodel
+          model.skops
+          python_env.yaml
+          requirements.txt
+src/
+  __init__.py
+  data_generator.py
+  document_parser.py
+  edge_cases_generator.py
+  llm_agent.py
+  ml_classifier.py
+  orchestrator.py
+  train_mlflow.py
+tests/
+  __init__.py
+  test_router.py
+.dockerignore
+.gitignore
+docker-compose.yml
+Dockerfile
+LICENSE
+mlflow.db
+README.md
+requirements.txt
+xgboost_pipeline.pkl
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="app/components/dashboard.py">
+import streamlit as st
+import pandas as pd
+import os
+from datetime import datetime
+
+def save_feedback(invoice_number, correct_category, seller_nip, raw_text):
+    """Zapisuje ręczną korektę do pliku CSV (pętla sprzężenia zwrotnego dla ML)."""
+    feedback_file = "data/human_feedback.csv"
+    
+    os.makedirs("data", exist_ok=True)
+    
+    new_data = pd.DataFrame([{
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "invoice_number": invoice_number,
+        "seller_nip": seller_nip,       # <-- NOWE POLE (cecha kategoryczna)
+        "raw_text": raw_text,           # <-- NOWE POLE (cecha tekstowa do TF-IDF)
+        "category": correct_category
+    }])
+    
+    if not os.path.exists(feedback_file):
+        new_data.to_csv(feedback_file, index=False)
+    else:
+        new_data.to_csv(feedback_file, mode='a', header=False, index=False)
+
+def render_report(report):
+    """Renderuje kokpit analityczny na podstawie obiektu ProcessingReport."""
+    
+    st.subheader("📊 Wyniki Analizy Dokumentu")
+    
+    # 1. Karta Metryk
+    col1, col2, col3 = st.columns(3)
+    col1.metric(label="Numer faktury", value=report.invoice_number)
+    col2.metric(label="NIP Sprzedawcy", value=report.seller_nip)
+    col3.metric(label="Kwota Brutto", value=f"{report.total_gross:.2f} PLN")
+        
+    st.markdown("---")
+    
+    # 2. Status Kaskady
+    path = report.decision_path
+    if path == "XGBOOST_FAST_TRACK":
+        st.success("🟢 XGBOOST FAST-TRACK: Zaksięgowano automatycznie (0 kosztów API).")
+    elif path == "LLM_FALLBACK":
+        st.info("🔵 LLM FALLBACK: Przeanalizowano i zatwierdzono przez Agenta AI.")
+    elif path == "MANUAL_REVIEW":
+        st.warning("🟡 MANUAL REVIEW: Zbyt niska pewność systemu. Wymagana akceptacja.")
+    elif path == "PARSER_REJECTED":
+        st.error("🔴 PARSER REJECTED: Dokument uszkodzony lub brakuje kluczowych danych.")
+        
+    st.markdown("---")
+
+    # 3. Kategoria i Pewność
+    st.markdown(f"### Wykryta kategoria: **`{report.final_category}`**")
+    conf_value = max(0.0, min(1.0, report.final_confidence))
+    st.progress(conf_value, text=f"Pewność systemu: {conf_value * 100:.1f}%")
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # 4. Ścieżka Audytu
+    st.markdown("**Uzasadnienie biznesowe:**")
+    st.code(report.reasoning, language="text")
+
+    # Weryfikacja manualna dla pojedynczej analizy
+    if path in ["MANUAL_REVIEW", "LLM_FALLBACK"]:
+        st.markdown("---")
+        st.markdown("### 🧑‍💻 Weryfikacja Manualna")
+        st.caption("Ten dokument wymaga nadzoru. Potwierdź lub zmień kategorię, aby douczyć model ML.")
+        
+        categories = ["OFFICE_SUPPLIES", "IT_HARDWARE", "IT_SERVICES", "TRAVEL_FLEET"]
+        default_index = categories.index(report.final_category) if report.final_category in categories else 0
+        
+        with st.form(key=f"feedback_form_{report.invoice_number}"):
+            selected_category = st.selectbox(
+                "Poprawna kategoria kosztowa:", 
+                options=categories,
+                index=default_index
+            )
+            
+            submit_btn = st.form_submit_button("✅ Zatwierdź i zapisz w bazie wiedzy", type="primary")
+            
+            if submit_btn:
+                save_feedback(invoice_number=report.invoice_number, 
+                              correct_category = selected_category,
+                              seller_nip=report.seller_nip,
+                              raw_text=report.raw_text)
+                st.success(f"Zapisano korektę: {selected_category}! Decyzja trafiła do bazy wiedzy.")
+</file>
+
+<file path="app/main_ui.py">
+import sys
+import os
+import tempfile
+import base64
+import streamlit as st
+import pandas as pd
+from dotenv import load_dotenv
+
+# 1. Środowisko i ścieżki importu
+load_dotenv()
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+SRC_PATH = os.path.join(PROJECT_ROOT, "src")
+for path in [PROJECT_ROOT, SRC_PATH]:
+    if path not in sys.path:
+        sys.path.append(path)
+
+from orchestrator import InvoicePipelineOrchestrator
+from components.dashboard import save_feedback
+from train_mlflow import train_active_learning
+
+
+# ==========================================
+# Inicjalizacja komponentów i stanu sesji
+# ==========================================
+@st.cache_resource
+def get_orchestrator():
+    return InvoicePipelineOrchestrator(model_bundle_path="xgboost_pipeline.pkl")
+
+def init_session_state():
+    if 'batch_results' not in st.session_state:
+        st.session_state.batch_results = None
+    if 'batch_stats' not in st.session_state:
+        st.session_state.batch_stats = None
+    if 'uploader_key' not in st.session_state:
+        st.session_state.uploader_key = 0
+
+def get_feedback_count() -> int:
+    """Zwraca liczbę zebranych ręcznych adnotacji."""
+    feedback_file = "data/human_feedback.csv"
+    if os.path.exists(feedback_file):
+        try:
+            df_fb = pd.read_csv(feedback_file)
+            return len(df_fb)
+        except Exception:
+            return 0
+    return 0
+
+# ==========================================
+# Główny interfejs
+# ==========================================
+def main():
+    st.set_page_config(page_title="Smart Invoice IDP", page_icon="🧾", layout="wide")
+    init_session_state()
+    orchestrator = get_orchestrator()
+
+    # Panel boczny: Konfiguracja i Active Learning
+    with st.sidebar:
+        st.header("⚙️ Parametry Potoku")
+        
+        # Dynamiczny próg pewności
+        confidence_threshold = st.slider(
+            "Próg akceptacji XGBoost",
+            min_value=0.50,
+            max_value=0.99,
+            value=0.85,
+            step=0.01,
+            help="Poniżej tej wartości faktura trafia do weryfikacji przez Gemini LLM lub człowieka."
+        )
+        
+        # Synchronizacja progu z routerem w backendzie
+        if hasattr(orchestrator, 'router') and hasattr(orchestrator.router, 'confidence_threshold'):
+            orchestrator.router.confidence_threshold = confidence_threshold
+        elif hasattr(orchestrator, 'confidence_threshold'):
+            orchestrator.confidence_threshold = confidence_threshold
+
+        st.markdown("---")
+        st.subheader("📡 Status Usług")
+        st.write("✅ XGBoost: Załadowany")
+        if os.getenv("GEMINI_API_KEY"):
+            st.write("✅ Gemini API: Aktywne")
+        else:
+            st.error("❌ Gemini API: Brak klucza!")
+
+        st.markdown("---")
+        st.subheader("🧠 Pętla Active Learning")
+        fb_count = get_feedback_count()
+        st.metric("Zebrane korekty ludzkie", f"{fb_count} / 20")
+        
+        # Przycisk aktywny zawsze, gdy jest cokolwiek w buforze, 
+        # ale z wyróżnieniem, gdy przekroczy 20 próbek
+        can_retrain = fb_count > 0
+        
+        if fb_count >= 20:
+            st.success("Zebrano optymalną partię danych do bezpiecznego dotrenowania!")
+        elif fb_count > 0:
+            st.caption(f"Bufor zawiera {fb_count} korekt. Zalecane: minimum 20.")
+        else:
+            st.caption("Zbierz korekty w kolejce akceptacji, aby odblokować retrening.")
+
+        if st.button("🔄 Uruchom retrening modelu", disabled=not can_retrain, use_container_width=True):
+            with st.spinner("Trenowanie i ewaluacja modelu w DagsHub..."):
+                result = train_active_learning()
+                
+            status = result.get("status")
+            
+            if status == "SUCCESS":
+                st.success(f"✅ {result['message']}")
+                st.write(f"• **F1 Golden:** {result['f1_macro']:.4f}")
+                st.write(f"• **Slice Accuracy:** {result['slice_accuracy'] * 100:.1f}%")
+                
+                # 1. Kluczowe: czyszczenie pamięci podręcznej Streamlita
+                st.cache_resource.clear()
+                
+                # 2. Przeładowanie stanu interfejsu (licznik wróci do 0/20)
+                st.rerun()
+                
+            elif status == "FAILED":
+                st.error(f"❌ {result['message']}")
+                st.write(f"• F1: {result.get('f1_macro', 0):.4f} | Slice: {result.get('slice_accuracy', 0):.2f}")
+                
+            elif status == "EMPTY":
+                st.info(f"ℹ️ {result['message']}")
+                
+            elif status == "ERROR":
+                st.error(f"⚠️ {result['message']}")
+    # Główny obszar roboczy (Zunifikowany)
+    st.title("🧾 Smart Invoice IDP - Panel Przetwarzania")
+    st.markdown("Wgraj jedną lub wiele faktur PDF. System przetworzy je kaskadowo z uwzględnieniem wybranego progu pewności.")
+
+    # Układ dwukolumnowy: Uploader oraz Przycisk czyszczenia
+    col_upload, col_clear = st.columns([5, 1])
+
+    with col_upload:
+        uploaded_files = st.file_uploader(
+            "Przeciągnij pliki PDF", 
+            type=["pdf"], 
+            accept_multiple_files=True, 
+            key=f"uploader_{st.session_state.uploader_key}"
+        )
+
+    with col_clear:
+        # Odstęp wyrównujący przycisk z polem wgrywania plików
+        st.write("")
+        st.write("")
+        if st.button("🗑️ Wyczyść pliki", use_container_width=True):
+            st.session_state.uploader_key += 1
+            st.session_state.batch_results = None
+            st.session_state.batch_stats = None
+            st.rerun()
+
+    if uploaded_files:
+        if st.button("🚀 Rozpocznij przetwarzanie", type="primary"):
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+            results = []
+            stats = {
+                "XGBOOST_FAST_TRACK": 0, 
+                "LLM_FALLBACK": 0, 
+                "MANUAL_REVIEW": 0, 
+                "PARSER_REJECTED": 0, 
+                "RESOLVED_BY_HUMAN": 0
+            }
+            total_files = len(uploaded_files)
+
+            for idx, file in enumerate(uploaded_files):
+                status_text.text(f"Przetwarzanie dokumentu {idx + 1} z {total_files}: {file.name}...")
+                
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
+                    tmp_file.write(file.getvalue())
+                    tmp_pdf_path = tmp_file.name
+
+                try:
+                    report = orchestrator.process_invoice(pdf_path=tmp_pdf_path)
+                    results.append({
+                        "Nazwa Pliku": file.name,
+                        "Nr Faktury": report.invoice_number,
+                        "NIP": report.seller_nip,
+                        "Kwota": report.total_gross,
+                        "Kategoria": report.final_category,
+                        "Pewność (%)": round(report.final_confidence * 100, 1),
+                        "Status": report.decision_path,
+                        "Uzasadnienie": report.reasoning,
+                        "raw_text": report.raw_text 
+                    })
+                    if report.decision_path in stats:
+                        stats[report.decision_path] += 1
+                    else:
+                        stats["PARSER_REJECTED"] += 1
+                except Exception as e:
+                    results.append({"Nazwa Pliku": file.name, "Status": "PARSER_REJECTED", "Uzasadnienie": str(e)})
+                    stats["PARSER_REJECTED"] += 1
+                finally:
+                    if os.path.exists(tmp_pdf_path):
+                        os.remove(tmp_pdf_path)
+
+                progress_bar.progress((idx + 1) / total_files)
+
+            status_text.success("✅ Zakończono analizę dokumentów.")
+            st.session_state.batch_results = pd.DataFrame(results)
+            st.session_state.batch_stats = stats
+
+    # Prezentacja wyników i kolejka akceptacji
+    if st.session_state.batch_results is not None:
+        df = st.session_state.batch_results
+        stats = st.session_state.batch_stats
+
+        st.subheader("📊 Podsumowanie przetwarzania")
+        col1, col2, col3, col4, col5 = st.columns(5)
+        col1.metric("Zaksięgowano (ML)", stats.get("XGBOOST_FAST_TRACK", 0))
+        col2.metric("Odzyskane (LLM)", stats.get("LLM_FALLBACK", 0))
+        col3.metric("Odrzucone (Błąd)", stats.get("PARSER_REJECTED", 0))
+        col4.metric("Do weryfikacji", stats.get("MANUAL_REVIEW", 0))
+        col5.metric("Poprawione ręcznie", stats.get("RESOLVED_BY_HUMAN", 0))
+
+        st.markdown("---")
+        st.dataframe(df, use_container_width=True)
+
+        csv_data = df.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            label="📥 Pobierz plik integracyjny CSV dla ERP",
+            data=csv_data,
+            file_name="import_erp_faktury.csv",
+            mime="text/csv",
+        )
+
+        # Kolejka weryfikacji z podglądem PDF
+        manual_df = df[df['Status'] == 'MANUAL_REVIEW']
+        if not manual_df.empty:
+            st.markdown("---")
+            st.subheader("🧑‍‍‍💻 Kolejka Akceptacji (Wymaga interwencji)")
+            st.info("Poniższe pozycje wymagają weryfikacji. Sprawdź dokument w podglądzie i wybierz poprawną kategorię.")
+
+            invoice_to_fix = st.selectbox(
+                "Wybierz pozycję do skorygowania:", 
+                manual_df['Nazwa Pliku'].tolist()
+            )
+
+            col_form, col_pdf = st.columns([1, 1])
+
+            with col_form:
+                selected_row = manual_df[manual_df['Nazwa Pliku'] == invoice_to_fix].iloc[0]
+                st.write(f"**Nr faktury:** {selected_row['Nr Faktury']} | **NIP:** {selected_row['NIP']} | **Kwota:** {selected_row['Kwota']} PLN")
+                st.caption(f"*Uzasadnienie kaskady: {selected_row['Uzasadnienie']}*")
+
+                categories = ["OFFICE_SUPPLIES", "IT_HARDWARE", "IT_SERVICES", "TRAVEL_FLEET"]
+                current_cat = str(selected_row['Kategoria'])
+                default_idx = categories.index(current_cat) if current_cat in categories else 0
+
+                with st.form(key=f"resolve_form_{invoice_to_fix}"):
+                    new_category = st.selectbox("Właściwa kategoria:", categories, index=default_idx)
+                    submit_override = st.form_submit_button("✅ Zatwierdź korektę", type="primary")
+
+                    if submit_override:
+                        idx = df.index[df['Nazwa Pliku'] == invoice_to_fix].tolist()[0]
+                        st.session_state.batch_results.at[idx, 'Kategoria'] = new_category
+                        st.session_state.batch_results.at[idx, 'Pewność (%)'] = 100.0
+                        st.session_state.batch_results.at[idx, 'Status'] = 'RESOLVED_BY_HUMAN'
+
+                        st.session_state.batch_stats['MANUAL_REVIEW'] -= 1
+                        st.session_state.batch_stats['RESOLVED_BY_HUMAN'] += 1
+
+                        save_feedback(
+                            invoice_number=selected_row['Nr Faktury'], 
+                            correct_category=new_category,
+                            seller_nip = selected_row['NIP'],
+                            raw_text = selected_row['raw_text']
+                        )
+                        st.rerun()
+
+            with col_pdf:
+                selected_file = next((f for f in uploaded_files if f.name == invoice_to_fix), None)
+                if selected_file:
+                    base64_pdf = base64.b64encode(selected_file.getvalue()).decode('utf-8')
+                    pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="450" type="application/pdf"></iframe>'
+                    st.markdown(pdf_display, unsafe_allow_html=True)
+                else:
+                    st.warning("Podgląd dokumentu PDF jest niedostępny.")
+        else:
+            st.markdown("---")
+            st.success("🎉 Wszystkie pozycje zostały zatwierdzone. Brak zadań w kolejce akceptacji.")
+
+if __name__ == "__main__":
+    main()
+</file>
+
+<file path="mlruns/1/models/m-3f350ca04061421586af269511d46f22/artifacts/conda.yaml">
+channels:
+- conda-forge
+dependencies:
+- python=3.12.0
+- pip<=23.2.1
+- pip:
+  - mlflow==3.16.1
+  - numpy==2.5.3
+  - pandas==2.2.2
+  - scikit-learn==1.5.1
+  - scipy==1.17.1
+  - skops==0.16.0
+  - xgboost==2.1.1
+name: mlflow-env
+</file>
+
+<file path="mlruns/1/models/m-3f350ca04061421586af269511d46f22/artifacts/MLmodel">
+artifact_path: file:///C:/Users/48666/Desktop/Patryk/python/Projekty/smart-invoice-idp/mlruns/1/models/m-3f350ca04061421586af269511d46f22/artifacts
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.skops
+    predict_fn: predict
+    python_version: 3.12.0
+  sklearn:
+    code: null
+    pickled_model: model.skops
+    serialization_format: skops
+    sklearn_version: 1.5.1
+    skops_trusted_types:
+    - sklearn.compose._column_transformer._RemainderColsList
+    - xgboost.core.Booster
+    - xgboost.sklearn.XGBClassifier
+mlflow_version: 3.16.1
+model_id: m-3f350ca04061421586af269511d46f22
+model_size_bytes: 1009651
+model_uuid: m-3f350ca04061421586af269511d46f22
+prompts: null
+run_id: 52998109833447738fbe680481fb15ab
+utc_time_created: '2026-10-01 09:06:01.288187'
+</file>
+
+<file path="mlruns/1/models/m-3f350ca04061421586af269511d46f22/artifacts/python_env.yaml">
+python: 3.12.0
+build_dependencies:
+- pip==23.2.1
+- setuptools
+- wheel
+dependencies:
+- -r requirements.txt
+</file>
+
+<file path="mlruns/1/models/m-3f350ca04061421586af269511d46f22/artifacts/requirements.txt">
+mlflow==3.16.1
+numpy==2.5.3
+pandas==2.2.2
+scikit-learn==1.5.1
+scipy==1.17.1
+skops==0.16.0
+xgboost==2.1.1
+</file>
+
+<file path="mlruns/1/models/m-613ad32c6f8b48c698ebcb86fbfeba4a/artifacts/conda.yaml">
+channels:
+- conda-forge
+dependencies:
+- python=3.12.0
+- pip<=23.2.1
+- pip:
+  - mlflow==3.16.1
+  - numpy==2.5.3
+  - pandas==2.2.2
+  - scikit-learn==1.5.1
+  - scipy==1.17.1
+  - skops==0.16.0
+  - xgboost==2.1.1
+name: mlflow-env
+</file>
+
+<file path="mlruns/1/models/m-613ad32c6f8b48c698ebcb86fbfeba4a/artifacts/MLmodel">
+artifact_path: file:///C:/Users/48666/Desktop/Patryk/python/Projekty/smart-invoice-idp/mlruns/1/models/m-613ad32c6f8b48c698ebcb86fbfeba4a/artifacts
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.skops
+    predict_fn: predict
+    python_version: 3.12.0
+  sklearn:
+    code: null
+    pickled_model: model.skops
+    serialization_format: skops
+    sklearn_version: 1.5.1
+    skops_trusted_types:
+    - sklearn.compose._column_transformer._RemainderColsList
+    - xgboost.core.Booster
+    - xgboost.sklearn.XGBClassifier
+mlflow_version: 3.16.1
+model_id: m-613ad32c6f8b48c698ebcb86fbfeba4a
+model_size_bytes: 1009651
+model_uuid: m-613ad32c6f8b48c698ebcb86fbfeba4a
+prompts: null
+run_id: 59d81a037fa84a49b3af105b5cad5671
+utc_time_created: '2026-10-01 09:56:17.911913'
+</file>
+
+<file path="mlruns/1/models/m-613ad32c6f8b48c698ebcb86fbfeba4a/artifacts/python_env.yaml">
+python: 3.12.0
+build_dependencies:
+- pip==23.2.1
+- setuptools
+- wheel
+dependencies:
+- -r requirements.txt
+</file>
+
+<file path="mlruns/1/models/m-613ad32c6f8b48c698ebcb86fbfeba4a/artifacts/requirements.txt">
+mlflow==3.16.1
+numpy==2.5.3
+pandas==2.2.2
+scikit-learn==1.5.1
+scipy==1.17.1
+skops==0.16.0
+xgboost==2.1.1
+</file>
+
+<file path="mlruns/1/models/m-62df2f8c68714c0c8fd64af342c8dd4e/artifacts/conda.yaml">
+channels:
+- conda-forge
+dependencies:
+- python=3.12.0
+- pip<=23.2.1
+- pip:
+  - mlflow==3.16.1
+  - numpy==2.5.3
+  - pandas==2.2.2
+  - scikit-learn==1.5.1
+  - scipy==1.17.1
+  - skops==0.16.0
+  - xgboost==2.1.1
+name: mlflow-env
+</file>
+
+<file path="mlruns/1/models/m-62df2f8c68714c0c8fd64af342c8dd4e/artifacts/MLmodel">
+artifact_path: file:///C:/Users/48666/Desktop/Patryk/python/Projekty/smart-invoice-idp/mlruns/1/models/m-62df2f8c68714c0c8fd64af342c8dd4e/artifacts
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.skops
+    predict_fn: predict
+    python_version: 3.12.0
+  sklearn:
+    code: null
+    pickled_model: model.skops
+    serialization_format: skops
+    sklearn_version: 1.5.1
+    skops_trusted_types:
+    - sklearn.compose._column_transformer._RemainderColsList
+    - xgboost.core.Booster
+    - xgboost.sklearn.XGBClassifier
+mlflow_version: 3.16.1
+model_id: m-62df2f8c68714c0c8fd64af342c8dd4e
+model_size_bytes: 1009651
+model_uuid: m-62df2f8c68714c0c8fd64af342c8dd4e
+prompts: null
+run_id: 5e74a7335c034d62a32cace56051a573
+utc_time_created: '2026-09-30 15:28:35.723352'
+</file>
+
+<file path="mlruns/1/models/m-62df2f8c68714c0c8fd64af342c8dd4e/artifacts/python_env.yaml">
+python: 3.12.0
+build_dependencies:
+- pip==23.2.1
+- setuptools
+- wheel
+dependencies:
+- -r requirements.txt
+</file>
+
+<file path="mlruns/1/models/m-62df2f8c68714c0c8fd64af342c8dd4e/artifacts/requirements.txt">
+mlflow==3.16.1
+numpy==2.5.3
+pandas==2.2.2
+scikit-learn==1.5.1
+scipy==1.17.1
+skops==0.16.0
+xgboost==2.1.1
+</file>
+
+<file path="mlruns/1/models/m-c7fdef4ac44e462195f6d6b3c7ee26e4/artifacts/conda.yaml">
+channels:
+- conda-forge
+dependencies:
+- python=3.12.0
+- pip<=23.2.1
+- pip:
+  - mlflow==3.16.1
+  - numpy==2.5.3
+  - pandas==2.2.2
+  - scikit-learn==1.5.1
+  - scipy==1.17.1
+  - skops==0.16.0
+  - xgboost==2.1.1
+name: mlflow-env
+</file>
+
+<file path="mlruns/1/models/m-c7fdef4ac44e462195f6d6b3c7ee26e4/artifacts/MLmodel">
+artifact_path: file:///C:/Users/48666/Desktop/Patryk/python/Projekty/smart-invoice-idp/mlruns/1/models/m-c7fdef4ac44e462195f6d6b3c7ee26e4/artifacts
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.skops
+    predict_fn: predict
+    python_version: 3.12.0
+  sklearn:
+    code: null
+    pickled_model: model.skops
+    serialization_format: skops
+    sklearn_version: 1.5.1
+    skops_trusted_types:
+    - sklearn.compose._column_transformer._RemainderColsList
+    - xgboost.core.Booster
+    - xgboost.sklearn.XGBClassifier
+mlflow_version: 3.16.1
+model_id: m-c7fdef4ac44e462195f6d6b3c7ee26e4
+model_size_bytes: 1008498
+model_uuid: m-c7fdef4ac44e462195f6d6b3c7ee26e4
+prompts: null
+run_id: 28d5618785a548a6a308e8b871f28650
+utc_time_created: '2026-09-30 13:28:30.761391'
+</file>
+
+<file path="mlruns/1/models/m-c7fdef4ac44e462195f6d6b3c7ee26e4/artifacts/python_env.yaml">
+python: 3.12.0
+build_dependencies:
+- pip==23.2.1
+- setuptools
+- wheel
+dependencies:
+- -r requirements.txt
+</file>
+
+<file path="mlruns/1/models/m-c7fdef4ac44e462195f6d6b3c7ee26e4/artifacts/requirements.txt">
+mlflow==3.16.1
+numpy==2.5.3
+pandas==2.2.2
+scikit-learn==1.5.1
+scipy==1.17.1
+skops==0.16.0
+xgboost==2.1.1
+</file>
+
+<file path="mlruns/1/models/m-e463e42bf2804007822f056ea7e0b96e/artifacts/conda.yaml">
+channels:
+- conda-forge
+dependencies:
+- python=3.12.0
+- pip<=23.2.1
+- pip:
+  - mlflow==3.16.1
+  - numpy==2.5.3
+  - pandas==2.2.2
+  - scikit-learn==1.5.1
+  - scipy==1.17.1
+  - skops==0.16.0
+  - xgboost==2.1.1
+name: mlflow-env
+</file>
+
+<file path="mlruns/1/models/m-e463e42bf2804007822f056ea7e0b96e/artifacts/MLmodel">
+artifact_path: file:///C:/Users/48666/Desktop/Patryk/python/Projekty/smart-invoice-idp/mlruns/1/models/m-e463e42bf2804007822f056ea7e0b96e/artifacts
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.skops
+    predict_fn: predict
+    python_version: 3.12.0
+  sklearn:
+    code: null
+    pickled_model: model.skops
+    serialization_format: skops
+    sklearn_version: 1.5.1
+    skops_trusted_types:
+    - sklearn.compose._column_transformer._RemainderColsList
+    - xgboost.core.Booster
+    - xgboost.sklearn.XGBClassifier
+mlflow_version: 3.16.1
+model_id: m-e463e42bf2804007822f056ea7e0b96e
+model_size_bytes: 1009651
+model_uuid: m-e463e42bf2804007822f056ea7e0b96e
+prompts: null
+run_id: 3278b4d123df45d995d27a486e37a3de
+utc_time_created: '2026-09-30 15:07:16.125605'
+</file>
+
+<file path="mlruns/1/models/m-e463e42bf2804007822f056ea7e0b96e/artifacts/python_env.yaml">
+python: 3.12.0
+build_dependencies:
+- pip==23.2.1
+- setuptools
+- wheel
+dependencies:
+- -r requirements.txt
+</file>
+
+<file path="mlruns/1/models/m-e463e42bf2804007822f056ea7e0b96e/artifacts/requirements.txt">
+mlflow==3.16.1
+numpy==2.5.3
+pandas==2.2.2
+scikit-learn==1.5.1
+scipy==1.17.1
+skops==0.16.0
+xgboost==2.1.1
+</file>
+
+<file path="src/__init__.py">
+
+</file>
+
+<file path="src/data_generator.py">
+class InvoiceItem:
+    """Reprezentuje pojedynczą pozycję na fakturze (np. 'Laptop Dell', 'Konsultacje IT')."""
+    
+    def __init__(self, description: str, net_amount: float, vat_rate: float):
+        # Twoim zadaniem będzie przypisanie zmiennych i dodanie logiki liczącej
+        # kwotę VAT oraz kwotę brutto dla tej jednej pozycji.
+        if net_amount < 0:
+            raise ValueError(f"Kwota netto nie może być ujemna: {net_amount}")
+        
+        # Zabezpieczenie: jeśli ktoś poda 23 zamiast 0.23
+        if vat_rate > 1.0:
+            raise ValueError(f"Stawka VAT powinna być ułamkiem (np. 0.23 dla 23%), otrzymano: {vat_rate}")
+        self.description = description
+        self.net_amount = round(net_amount, 2)
+        self.vat_rate = vat_rate
+
+    @property #dekorator tak zeby w razie czego mozna bylo pisac item.vat_amount, bo bez tego by bylo item.vat_amount()
+    def vat_amount(self) -> float:
+        """Zwraca wyliczoną kwotę VAT, zaokrągloną do 2 miejsc po przecinku."""
+        return round(self.net_amount * self.vat_rate, 2)
+        
+    @property
+    def gross_amount(self) -> float:
+        """Zwraca wyliczoną kwotę brutto."""
+        return round(self.net_amount + self.vat_amount, 2)
+
+
+class Invoice:
+    """Reprezentuje cały dokument faktury składający się z wielu pozycji."""
+    
+    def __init__(self, invoice_number: str, issue_date: str,seller_name: str, seller_nip: str, items: list[InvoiceItem]):
+        # Przypisanie atrybutów.
+        self.invoice_number = invoice_number
+        self.issue_date = issue_date
+        self.seller_name = seller_name
+        self.seller_nip = seller_nip
+        self.items = items
+    
+    @property  
+    def total_net(self) -> float:
+        """Suma kwot netto ze wszystkich pozycji."""
+        return round( sum(item.net_amount for item in self.items), 2)    
+        
+    @property
+    def total_vat(self) -> float:
+        """Suma kwot VAT ze wszystkich pozycji."""
+        return round( sum(item.vat_amount for item in self.items), 2)
+    @property
+    def total_gross(self) -> float:
+        """Suma kwot brutto ze wszystkich pozycji."""
+        return round( sum(item.gross_amount for item in self.items), 2)
+    
+#=============================================================================================================#
+
+from faker import Faker
+import random
+
+# Zaprojektujmy 4 główne kategorie kosztów firmowych:
+
+# IT_HARDWARE (np. Laptopy, monitory, kable)
+
+# IT_SERVICES (np. Subskrypcje chmurowe AWS/Azure, licencje GitHub, hosting)
+
+# OFFICE_SUPPLIES (np. Papier ksero, tonery, kawa, środki czystości)
+
+# TRAVEL_FLEET (np. Paliwo PB95, bilet PKP, hotel, parking)
+
+class InvoiceFactory:
+    """Fabryka odpowiedzialna za produkcję syntetycznych danych faktur."""
+
+    def __init__(self, seed: int = 42):
+        self.fake = Faker("pl_PL")  # Polska wersja generatora (tworzy polskie nazwy firm, adresy)
+        Faker.seed(seed)
+        random.seed(seed)
+
+        # Nasza baza 'stałych dostawców' - to na nich XGBoost nauczy się wzorców!
+        # Klucz to NIP, a wartość to krotka: (Nazwa firmy, Typowa kategoria)
+        self.known_vendors = {
+            "5261040828": ("Orlen Paliwa Sp. z o.o.", "TRAVEL_FLEET"),
+            "5213456789": ("Dell Polska Sp. z o.o.", "IT_HARDWARE"),
+            "1234567890": ("Amazon Web Services EMEA", "IT_SERVICES"),
+            "9876543210": ("Biuromax Artykuły Biurowe", "OFFICE_SUPPLIES"),
+        }
+
+        # Przykładowe pozycje przypisane do kategorii
+        self.sample_catalog = {
+            "TRAVEL_FLEET": [
+                "Olej napędowy Verva", "Benzyna Pb95", "Opłata autostradowa A2", "Hotel Warszawa doba"
+            ],
+            "IT_HARDWARE": [
+                "Monitor Dell 27 cali", "Klawiatura mechaniczna", "Laptop Lenovo ThinkPad", "Kabel USB-C"
+            ],
+            "IT_SERVICES": [
+                "Hosting serwera VPS", "Subskrypcja Azure Cloud", "Licencja JetBrains", "Domena internetowa"
+            ],
+            "OFFICE_SUPPLIES": [
+                "Papier ksero A4 5 ryz", "Toner do drukarki HP", "Kawa ziarnista Arabica 1kg", "Segregator biurowy"
+            ]
+        }
+
+        # Pozycje niejednoznaczne, które celowo mają zmylić prosty model:
+        self.ambiguous_items = [
+            "Usługa doradcza i wsparcie",
+            "Materiały eksploatacyjne różne",
+            "Refaktura kosztów projektu",
+            "Opłata manipulacyjna",
+            "Rozliczenie okresowe"
+        ]
+    def _generate_items_for_category(self, category: str) -> list[InvoiceItem]: # _ oznaczamy metode prywatną, którą wykorzystujemy tylko w obrebie klasy, tak dla czytelnosci jest konwencja zeby ktos sie nie musial zastanawiac po co jest ta metoda
+        """
+        ZADANIE 1:
+        Losuje od 1 do 3 pozycji z katalogu odpowiadającego danej kategorii.
+        Dla każdej pozycji losuje cenę netto (np. od 20 zł do 3000 zł) oraz stawkę VAT (np. 0.23).
+        Tworzy obiekty InvoiceItem i zwraca je jako listę.
+        """
+        # Bezpiecznik: jeśli nie ma kategorii w katalogu, weź pozycje trudne/niejednoznaczne
+        category_items = self.sample_catalog.get(category, self.ambiguous_items)
+        
+        # Losujemy ile pozycji ma mieć faktura (od 1 do 3)
+        num_items = random.randint(1, min(3, len(category_items)))
+        
+        # Losujemy pozycje bez powtórzeń
+        selected_descriptions = random.sample(category_items, k=num_items)
+        
+        items = []
+        for desc in selected_descriptions:
+            # Realistyczna kwota netto z groszami (np. 149.99 zł)
+            net_amount = round(random.uniform(50.0, 2500.0), 2)
+            
+            # W B2B dominującą stawką jest 23% (0.23)
+            vat_rate = 0.23
+            
+            items.append(InvoiceItem(description=desc, net_amount=net_amount, vat_rate=vat_rate))
+        
+        return items    
+        
+
+    def create_random_invoice(self, threshold: float = 0.85) -> tuple[Invoice, str]:
+        """
+        ZADANIE 2:
+        Główna metoda tworząca fakturę:
+        1. Losuje jednego ze sprzedawców z self.known_vendors (lub w np. 15% (tutaj parametr threshold mowi ile ma byc % ZNANYCH sprzedawcow)przypadków tworzy nowego, nieznanego sprzedawcę - cold start!).
+        2. Pobiera kategorię tego sprzedawcy.
+        3. Generuje pozycje za pomocą _generate_items_for_category.
+        4. Generuje numer faktury (np. 'FV/2024/09/' + losowe cyfry) oraz datę.
+        5. Zwraca krotkę: (obiekt Invoice, etykieta_kategorii) -> etykieta przyda się nam potem do uczenia ML!
+        """
+        if not (0.0 <= threshold <= 1.0):
+            raise ValueError("Threshold musi być pomiędzy 0 a 1")
+        
+        #Tworzymy fakeowy numer faktury i date wystawienia
+        invoice_number = f"FV/{self.fake.year()}/{random.randint(1000, 9999)}"
+        issue_date = self.fake.date_this_year().strftime("%Y-%m-%d")            
+        
+        if random.random() < threshold:
+            seller_nip = random.choice( list(self.known_vendors.keys()) )
+            seller_name, category = self.known_vendors[seller_nip]
+        
+        else:
+            seller_nip = self.fake.nip()
+            seller_name = self.fake.company()
+            category = random.choice(list(self.sample_catalog.keys()))
+        
+        
+        items = self._generate_items_for_category(category=category)
+                    
+        invoice = Invoice(
+                        invoice_number=invoice_number,
+                        issue_date=issue_date,
+                        seller_name=seller_name,
+                        seller_nip=seller_nip,
+                        items=items
+                    )
+        return invoice, category
+        
+import os
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+
+class PDFRenderer:
+    """Odpowiada wyłącznie za wyrenderowanie obiektu Invoice do pliku PDF."""
+
+    def __init__(self, output_dir: str = "data/raw_pdfs"):
+        self.output_dir = output_dir
+        # Upewniamy się, że folder docelowy istnieje na dysku
+        os.makedirs(self.output_dir, exist_ok=True)
+
+    # PDFrender traktuje kartke jako uklad wspolrzednych - lewy dolny rog jest (0,0), a kartka A4 ma wysokosc jakos ok 870 px
+    def render(self, invoice: Invoice, filename: str) -> str:
+        """
+        Rysuje fakturę na formacie A4 i zapisuje na dysku.
+        Zwraca pełną ścieżkę do zapisanego pliku.
+        """
+        file_path = os.path.join(self.output_dir, filename)
+        
+        # 1. Tworzymy obiekt płótna (canvas) o wymiarach A4
+        c = canvas.Canvas(file_path, pagesize=A4)
+        
+        # y_cursor to nasza pozycja pionowa na kartce - startujemy blisko góry
+        y = 800 
+
+        # 2. Rysujemy nagłówek dokumentu
+        c.setFont("Helvetica-Bold", 16)
+        c.drawString(50, y, f"FAKTURA VAT: {invoice.invoice_number}")
+        y -= 25
+
+        c.setFont("Helvetica", 10)
+        c.drawString(50, y, f"Data wystawienia: {invoice.issue_date}")
+        y -= 30
+
+        # 3. Rysujemy dane Sprzedawcy
+        c.setFont("Helvetica-Bold", 11)
+        c.drawString(50, y, "SPRZEDAWCA:")
+        y -= 15
+        c.setFont("Helvetica", 10)
+        c.drawString(50, y, f"Nazwa: {invoice.seller_name}")
+        y -= 15
+        c.drawString(50, y, f"NIP: {invoice.seller_nip}")
+        y -= 40
+
+        # 4. Rysujemy tabelę z pozycjami
+        c.setFont("Helvetica-Bold", 10)
+        c.drawString(50, y, "Pozycja")
+        c.drawString(300, y, "Netto [PLN]")
+        c.drawString(400, y, "VAT")
+        c.drawString(480, y, "Brutto [PLN]")
+        y -= 15
+        
+        # Linia oddzielająca nagłówek tabeli
+        c.line(50, y, 550, y)
+        y -= 15
+
+        # Pętla po pozycjach faktury
+        c.setFont("Helvetica", 9)
+        for item in invoice.items:
+            c.drawString(50, y, item.description)
+            c.drawString(300, y, f"{item.net_amount:.2f}")
+            c.drawString(400, y, f"{int(item.vat_rate * 100)}%")
+            c.drawString(480, y, f"{item.gross_amount:.2f}")
+            y -= 18
+
+        y -= 15
+        c.line(50, y, 550, y)
+        y -= 25
+
+        # 5. Podsumowanie finansowe
+        c.setFont("Helvetica-Bold", 11)
+        c.drawString(350, y, f"Razem Netto: {invoice.total_net:.2f} PLN")
+        y -= 18
+        c.drawString(350, y, f"Razem VAT: {invoice.total_vat:.2f} PLN")
+        y -= 18
+        c.drawString(350, y, f"DO ZAPLATY: {invoice.total_gross:.2f} PLN")
+
+        # 6. Zapisanie pliku
+        c.save()
+        return file_path
+    
+    
+import csv
+
+def generate_dataset(num_invoices: int = 50):
+    factory = InvoiceFactory(seed=42)
+    renderer = PDFRenderer(output_dir="data/raw_pdfs")
+    
+    metadata_records = []
+    
+    print(f"Generowanie {num_invoices} faktur...")
+    for i in range(1, num_invoices + 1):
+        filename = f"faktura_{i:03d}.pdf"
+        invoice, category = factory.create_random_invoice()
+        
+        renderer.render(invoice, filename)
+        
+        metadata_records.append({
+            "filename": filename,
+            "category": category,
+            "seller_nip": invoice.seller_nip,
+            "total_gross": invoice.total_gross
+        })
+
+    # Zapisujemy etykiety do pliku CSV (nasz zbiór treningowo-testowy)
+    with open("data/dataset_labels.csv", mode="w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=["filename", "category", "seller_nip", "total_gross"])
+        writer.writeheader()
+        writer.writerows(metadata_records)
+
+    print("Gotowe! Wygenerowano pliki PDF oraz data/dataset_labels.csv.")
+
+
+def main():
+    """Główna pętla sterująca."""
+    generate_dataset(num_invoices=250)    
+    print("Gotowe! Wygenerowano pliki PDF oraz data/dataset_labels.csv.")
+
+if __name__ == "__main__":
+    main()
+</file>
+
+<file path="src/document_parser.py">
+import glob
+import os
+import re
+import pdfplumber
+from pydantic import BaseModel, ValidationError, field_validator, model_validator
+from typing import Optional
+
+#pydantic rozwiazuje problem tj. gdy w  __init__(self, kwota: float) mamy kwote jako int, to jak ktos przekaze argument kwota = "za darmo", to program przyjmie
+#tą wartość i wywali się gdzieś później. Pydantic od razu rzuca Valueerror, i dodatkowo konwertuje na dobre typy np tutaj: "150.00" -> 150.00
+
+# ==========================================
+# 1. KONTRAKT DANYCH (SCHEMA PYDANTIC)
+# ==========================================
+class ParsedInvoice(BaseModel):
+    """Schemat wyekstrahowanych danych z faktury."""
+    
+    invoice_number: str
+    issue_date: str
+    seller_name: str
+    seller_nip: str
+    total_net: Optional[float] = 0.0
+    total_vat: Optional[float] = 0.0
+    total_gross: float
+    raw_text: str  # Przechowujemy cały tekst z PDF - posłuży do TF-IDF w XGBoost!
+
+    # Pydantic pozwala na definiowanie własnych reguł sprawdzających:
+    @field_validator("seller_nip")
+    @classmethod
+    def validate_nip_format(cls, value: str) -> str: #dodaje cls, bo musze przekazac to jesli robie classmethod
+        # Usuwamy ewentualne spacje i myślniki z parsera
+        clean_nip = value.replace("-", "").replace(" ", "").strip()
+        if len(clean_nip) != 10 or not clean_nip.isdigit():
+            raise ValueError(f"NIP musi składać się z dokładnie 10 cyfr, otrzymano: '{value}'")
+        return clean_nip
+
+    @model_validator(mode="after")
+    def validate_totals_math(self):
+        # Pomijamy walidację matematyczną dla edge caseow, które nie mają rozbicia na Netto/VAT
+        if self.total_net == 0.0 and self.total_vat == 0.0:
+            return self
+        
+        # Sprawdzamy, czy różnica nie przekracza 2 groszy
+        difference = abs(self.total_net + self.total_vat - self.total_gross)
+        if difference > 0.02:
+            raise ValueError(
+                f"Błąd sumowania: Netto ({self.total_net}) + VAT ({self.total_vat}) != Brutto ({self.total_gross})"
+            )
+        return self #zawsze trzeba zwrocic cos w Pydantic v2
+    
+# ==========================================
+# 2. SILNIK PARSUJĄCY (INVOICE PARSER)
+# ==========================================
+class InvoiceParser:
+    """Odpowiada za ekstrakcję tekstu i mapowanie dokumentu PDF na model ParsedInvoice."""
+
+    def __init__(self):
+        # Kompilacja wzorców Regex przy starcie klasy (optymalizacja wydajnościowa)
+        self._patterns = {
+            "invoice_number": re.compile(r"FAKTURA VAT(?: NR)?:\s*(\S+)"),
+            "issue_date": re.compile(r"Data wystawienia:\s*(\d{4}-\d{2}-\d{2})"),
+            "seller_name": re.compile(r"(?:Nazwa|Sprzedawca):\s*([^\n]+)"),
+            "seller_nip": re.compile(r"NIP:\s*(\d{10})"),
+            "total_net": re.compile(r"Razem Netto:\s*([\d\.]+)\s*PLN"),
+            "total_vat": re.compile(r"Razem VAT:\s*([\d\.]+)\s*PLN"),
+            "total_gross": re.compile(r"(?:DO ZAP[ŁL]ATY|Kwota brutto(?: do zap[lł]aty)?):\s*([\d\.\,]+)\s*PLN", re.IGNORECASE),
+        }
+        
+    def extract_raw_text(self, pdf_path: str) -> str:
+        if not os.path.exists(pdf_path):
+            raise FileNotFoundError(f"Nie odnaleziono pliku: {pdf_path}")
+
+        extracted_text = []
+        with pdfplumber.open(pdf_path) as pdf:
+            for page in pdf.pages:
+                text = page.extract_text()
+                if text:
+                    extracted_text.append(text)
+
+        return "\n".join(extracted_text)
+
+    def _extract_by_pattern(self, pattern: re.Pattern, text: str, field_name: str) -> str:
+        match = pattern.search(text)
+        if not match:
+            raise ValueError(f"Nie udało się odnaleźć pola '{field_name}' w dokumencie.")
+        return match.group(1).strip()
+
+    def parse(self, pdf_path: str) -> ParsedInvoice:
+        raw_text = self.extract_raw_text(pdf_path)
+
+        # Pola wymagane (rzuci błędem, jeśli ich nie ma)
+        invoice_number = self._extract_by_pattern(self._patterns["invoice_number"], raw_text, "invoice_number")
+        issue_date = self._extract_by_pattern(self._patterns["issue_date"], raw_text, "issue_date")
+        seller_name = self._extract_by_pattern(self._patterns["seller_name"], raw_text, "seller_name")
+        seller_nip = self._extract_by_pattern(self._patterns["seller_nip"], raw_text, "seller_nip")
+        total_gross_str = self._extract_by_pattern(self._patterns["total_gross"], raw_text, "total_gross")
+
+        # Pola opcjonalne (miękkie sprawdzenie bez rzucania ValueError)
+        match_net = self._patterns["total_net"].search(raw_text)
+        total_net_val = float(match_net.group(1).strip()) if match_net else 0.0
+
+        match_vat = self._patterns["total_vat"].search(raw_text)
+        total_vat_val = float(match_vat.group(1).strip()) if match_vat else 0.0
+
+        # Pydantic sam skonwertuje stringi liczbowe na float i uruchomi walidację
+        return ParsedInvoice(
+            invoice_number=invoice_number,
+            issue_date=issue_date,
+            seller_name=seller_name,
+            seller_nip=seller_nip,
+            total_net=total_net_val,
+            total_vat=total_vat_val,
+            total_gross=float(total_gross_str.replace(",", ".")), # Zamiana ewentualnego przecinka na kropkę dla float
+            raw_text=raw_text,
+        )
+</file>
+
+<file path="src/edge_cases_generator.py">
+import os
+import random
+from datetime import datetime
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import A4
+
+# Katalog docelowy
+OUTPUT_DIR = "data/edge_cases_pdfs"
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+# Słownik "trudnych" pozycji na fakturach
+EDGE_CASES = [
+    "Konsultacje technologiczno-organizacyjne za Q3",
+    "Oplata manipulacyjna za przekroczenie limitu chmury",
+    "Ekspres do kawy z wbudowanym modulem Wi-Fi i aplikacja",
+    "Refaktura kosztow operacyjnych zgodnie z zal. 2",
+    "Paliwo do agregatu pradotworczego w glownej serwerowni",
+    "Szkolenie z MS Excel dla kierowcow floty regionalnej",
+    "Materialy pomocnicze do wdrozenia infrastruktury AWS",
+    "Abonament za system GPS do sledzenia przesylek IT",
+    "Kable zasilajace do biurowych ekspresow cisnieniowych",
+    "Zwrot kosztow dojazdu na targi technologiczne w Berlinie",
+    "Licencja na oprogramowanie do zarzadzania flota pojazdow",
+    "Wynajem przestrzeni na archiwum dokumentow papierowych",
+    "Bilety lotnicze dla zespolu wdrozeniowego systemu ERP",
+    "Zakup podkladek pod myszki oraz ziaren kawy Arabica",
+    "Usluga doradcza - optymalizacja procesow logistycznych"
+]
+
+def generate_edge_cases(num_files=15):
+    print(f"Rozpoczynam generowanie {num_files} trudnych faktur...")
+    
+    for i in range(num_files):
+        random_nip = "".join([str(random.randint(0, 9)) for _ in range(10)])
+        invoice_number = f"FV/EDGE/{datetime.now().year}/{1000 + i}"
+        amount = round(random.uniform(500, 15000), 2)
+        item_description = random.choice(EDGE_CASES)
+        
+        file_path = os.path.join(OUTPUT_DIR, f"trudna_faktura_{i+1:02d}.pdf")
+        c = canvas.Canvas(file_path, pagesize=A4)
+        
+        # 1. Nagłówek faktury - wracamy do formatu bez "NR:"
+        c.setFont("Helvetica-Bold", 16)
+        c.drawString(50, 800, f"FAKTURA VAT: {invoice_number}")
+        
+        c.setFont("Helvetica", 11)
+        c.drawString(50, 780, f"Data wystawienia: {datetime.now().strftime('%Y-%m-%d')}")
+        c.drawString(50, 765, f"Miejsce wystawienia: Warszawa")
+        
+        # 2. Sekcja Sprzedawcy i Nabywcy
+        c.setFont("Helvetica-Bold", 12)
+        c.drawString(50, 720, "Sprzedawca:")
+        c.setFont("Helvetica", 11)
+        c.drawString(50, 700, "Firma Krzak sp. z o.o.")
+        c.drawString(50, 685, f"NIP: {random_nip}")
+        c.drawString(50, 670, "ul. Technologiczna 12/4")
+        c.drawString(50, 655, "00-001 Warszawa")
+
+        c.setFont("Helvetica-Bold", 12)
+        c.drawString(300, 720, "Nabywca:")
+        c.setFont("Helvetica", 11)
+        c.drawString(300, 700, "Nasza Korporacja S.A.")
+        c.drawString(300, 685, "NIP: 1112223344")
+        c.drawString(300, 670, "ul. Biznesowa 1")
+        c.drawString(300, 655, "00-999 Warszawa")
+        
+        # 3. Pozycje na fakturze
+        c.setFont("Helvetica-Bold", 12)
+        c.drawString(50, 600, "Pozycje na fakturze:")
+        c.setFont("Helvetica", 11)
+        c.drawString(70, 580, f"1. {item_description}")
+        
+        # 4. Podsumowanie kwot - usunięto polskie znaki z etykiety
+        c.line(50, 550, 550, 550) 
+        c.setFont("Helvetica-Bold", 14)
+        c.drawString(50, 520, f"Kwota brutto do zaplaty: {amount:.2f} PLN")
+        
+        c.save()
+        
+    print(f"✅ Sukces! Wygenerowano {num_files} poprawnych faktur-pułapek w: {OUTPUT_DIR}")
+
+if __name__ == "__main__":
+    generate_edge_cases(15)
+</file>
+
+<file path="src/llm_agent.py">
+import json
+import re
+from typing import Literal
+from pydantic import BaseModel, Field, ValidationError
+from google import genai
+import os
+from dotenv import load_dotenv
+
+import time
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+# Schemat danych LLMa w Pydanticu
+# # Literal wymusza, że kategoria MUSI być dokładnie jedną z tych czterech wartości:
+AllowedCategory = Literal["IT_HARDWARE", "IT_SERVICES", "OFFICE_SUPPLIES", "TRAVEL_FLEET"]
+
+class LLMClassificationResult(BaseModel):
+    """Ścisły schemat odpowiedzi, jakiego wymagamy od LLMa."""
+    
+    category: AllowedCategory = Field(
+        description="Wybrana kategoria kosztowa faktury."
+    )
+    confidence: float = Field(
+        ge=0.0, le=1.0, 
+        description="Pewność decyzji w skali od 0.0 do 1.0."
+    )
+    reasoning: str = Field(
+        description="Krótkie uzasadnienie biznesowe decyzji (maksymalnie 1-2 zdania)."
+    )
+
+
+# =====================================================================
+# 2. SILNIK OBSŁUGI FALLBACKU (LLMFallbackClassifier)
+# =====================================================================
+class LLMFallbackClassifier:
+    """Odpowiada za przygotowanie zapytania, wywołanie LLM i walidację wyniku."""
+
+    def __init__(self, api_key: str | None = None):
+        # 1. Wczytujemy zmienne z pliku .env do środowiska systemu
+        load_dotenv()
+        
+        # 2. Bierzemy klucz przekazany wprost LUB wyciągamy go z .env
+        self.api_key = api_key or os.getenv("GEMINI_API_KEY")
+        
+        if not self.api_key:
+            raise ValueError("Nie znaleziono klucza GEMINI_API_KEY w pliku .env ani jako argumentu!")
+        
+        # 3. Klienta GenAI możemy zainicjalizować raz dla całej klasy
+        self.client = genai.Client(api_key=self.api_key)
+        
+        # Dopuszczalne kategorie do wstrzyknięcia do promptu
+        self.categories_description = """
+        - IT_HARDWARE: Sprzęt komputerowy, monitory, laptopy, akcesoria, kable, części PC.
+        - IT_SERVICES: Chmura (AWS, Azure), licencje oprogramowania, domeny, hosting, wsparcie IT.
+        - OFFICE_SUPPLIES: Artykuły biurowe, papier ksero, tonery, kawa, środki czystości.
+        - TRAVEL_FLEET: Paliwo, bilety PKP/lotnicze, hotele, parkingi, opłaty autostradowe.
+        """
+        
+
+    def build_prompt(self, raw_text: str, xgboost_guess: str) -> str:
+        """
+        Budujemy system prompta dla agenta
+        """
+        prompt = f"""
+        Jesteś ekspertem księgowym analizującym trudne faktury.
+        Twoim zadaniem jest przypisanie faktury do JEDNEJ z poniższych kategorii kosztowych:
+        {self.categories_description}
+
+        Kontekst:
+        Model XGBoost zasugerował kategorię: {xgboost_guess}, ale miał niską pewność.
+
+        Treść faktury:
+        \"\"\"
+        {raw_text}
+        \"\"\"
+
+        Odpowiedz WYŁĄCZNIE czystym obiektem JSON o polach:
+        {{
+        "category": "...",
+        "confidence": 0.0-1.0,
+        "reasoning": "..."
+        }}
+        """
+        return prompt.strip()
+
+    def clean_json_response(self, raw_response: str) -> str:
+        """Wyciąga czysty blok JSON niezależnie od komentarzy LLM wokół niego."""
+        match = re.search(r"\{.*\}", raw_response, re.DOTALL)
+        if not match:
+            raise ValueError(f"W odpowiedzi LLM nie znaleziono obiektu JSON: {raw_response}")
+        return match.group(0).strip()
+    
+    def parse_and_validate(self, raw_llm_output: str) -> LLMClassificationResult:
+        """
+        Parsuje i waliduje output LLMa
+        """
+        clean = self.clean_json_response(raw_response=raw_llm_output)
+        res = LLMClassificationResult.model_validate_json(clean)
+        return res
+
+    def mock_llm_call(self, prompt: str) -> str:
+        """
+        Symulator odpowiedzi LLM (użyteczny do testów jednostkowych bez zużywania API).
+        Zwraca przykładowy tekst, jaki oddałby model językowy.
+        """
+        # Celowo symulujemy odpowiedź opakowaną w markdown, jak robi to większość LLM-ów:
+        return """```json
+        {
+        "category": "TRAVEL_FLEET",
+        "confidence": 0.95,
+        "reasoning": "Faktura zawiera pozycję 'Olej napędowy Verva' oraz dane stacji paliw Orlen, co jednoznacznie wskazuje na koszty floty/podróży."
+        }
+        ```"""
+    
+    
+    def call_llm(self, prompt: str, max_retries: int = 3, base_delay: float = 2.0) -> str:
+        for attempt in range(max_retries):
+            try:
+                response = self.client.models.generate_content(
+                    model="gemini-3.8-flash",
+                    contents=prompt
+                )
+                return response.text
+            except Exception as e:
+                if attempt == max_retries - 1:
+                    logger.error(f"Wszystkie {max_retries} próby wywołania LLM nie powiodły się: {e}")
+                    raise e
+                
+                # Wzór na exponential backoff: 2s, 4s, 8s...
+                sleep_time = base_delay * (2 ** attempt)
+                logger.warning(
+                    f"Błąd LLM ({e}). Próba {attempt + 1}/{max_retries} nieudana. "
+                    f"Czekam {sleep_time}s przed ponowieniem..."
+                )
+                time.sleep(sleep_time)
+            
+def run_test():
+    classifier = LLMFallbackClassifier()
+    
+    # 1. Test symulacji standardowej
+    prompt = classifier.build_prompt(
+        raw_text="Faktura za paliwo PB95 ze stacji PKN Orlen", 
+        xgboost_guess="TRAVEL_FLEET"
+    )
+    raw_output = classifier.mock_llm_call(prompt)
+    result = classifier.parse_and_validate(raw_output)
+    
+    print("--- TEST MOCK LLM ---")
+    print(f"Kategoria:   {result.category}")
+    print(f"Pewność:     {result.confidence}")
+    print(f"Wyjaśnienie: {result.reasoning}\n")
+
+    # 2. Test odporności na 'gadatliwy' model (tekst przed i po JSON-ie)
+    dirty_llm_response = """
+    Cześć! Przeanalizowałem fakturę i oto wynik:
+    ```json
+    {
+      "category": "OFFICE_SUPPLIES",
+      "confidence": 0.88,
+      "reasoning": "Zakup papieru biurowego i segregatorów w hurtowni Biuromax."
+    }
+    ```
+    Mam nadzieję, że pomogłem!
+    """
+    dirty_result = classifier.parse_and_validate(dirty_llm_response)
+    print("--- TEST ODPORNOŚCI (BRUDNY JSON) ---")
+    print(f"Kategoria:   {dirty_result.category}")
+    print(f"Pewność:     {dirty_result.confidence}")
+    print(f"Wyjaśnienie: {dirty_result.reasoning}")
+
+if __name__ == "__main__":
+    run_test()
+</file>
+
+<file path="src/ml_classifier.py">
+import os
+import pandas as pd
+# Importujemy nasz gotowy parser z poprzedniego modułu
+from document_parser import InvoiceParser
+
+def build_dataset(csv_path: str = "data/dataset_labels.csv", pdf_dir: str = "data/raw_pdfs") -> pd.DataFrame:
+    """
+    Agreguje dane do postaci tabelarycznej (Pandas DataFrame).
+    Zwraca kolumny: ['filename', 'seller_nip', 'raw_text', 'category']
+    """
+    if not os.path.exists(csv_path):
+        raise FileNotFoundError(f"Brak pliku z etykietami: {csv_path}")
+
+    # Wczytujemy plik CSV z etykietami (nasze Ground Truth)
+    df_labels = pd.read_csv(csv_path)
+    
+    parser = InvoiceParser()
+    dataset_records = []
+
+    print(f"Budowanie zbioru danych ML z {len(df_labels)} rekordów...")
+
+    for _, row in df_labels.iterrows(): #iterrows() zwraca tuple (index, row), stad mam _ dla index i row dla row
+        filename = row["filename"]
+        category = row["category"] # To nasz Target (Y)
+        pdf_path = os.path.join(pdf_dir, filename)
+
+        try:
+            # Używamy naszego parsera do wyciągnięcia NIP-u i pełnego tekstu
+            parsed_invoice = parser.parse(pdf_path)
+            
+            dataset_records.append({
+                "filename": filename,
+                "seller_nip": parsed_invoice.seller_nip,  # Cecha (X1)
+                "raw_text": parsed_invoice.raw_text,      # Cecha (X2)
+                "category": category                      # Cel (Y)
+            })
+        except Exception as e:
+            # W świecie Data Science zawsze zakłada się, że ułamek danych będzie uszkodzony
+            print(f"[Ostrzeżenie] Pominięto {filename} ze względu na błąd parsowania: {e}")
+
+    df = pd.DataFrame(dataset_records)
+    print(f"Zbudowano DataFrame o rozmiarze: {df.shape}")
+    return df
+
+
+from sklearn.compose import ColumnTransformer
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.pipeline import Pipeline
+from xgboost import XGBClassifier
+
+def build_pipeline() -> Pipeline:
+    """
+    Buduje i zwraca potok ML: transformacja danych + klasyfikator XGBoost.
+    """
+    
+    # 1. Definiujemy, jak chcemy przetwarzać poszczególne kolumny
+    preprocessor = ColumnTransformer(
+        transformers=[     #("nazwa_własna", Narzędzie(), "nazwa_kolumny_w_tabeli"), przerabia dfa zeby byly liczby (bo xgboost operuje tylko na liczbach)
+            (
+                "text_features", 
+                TfidfVectorizer(max_features=500, ngram_range=(1, 2)), 
+                "raw_text"  # Wektorujemy tekst. ngram_range=(1,2) złapie m.in. zbitki typu "Olej napędowy", ngram_range = (min_liczba_slow_brana_pod_uwage, max_liczba_slow_brana_pod_uwage)
+            ),
+            (
+                "nip_features", 
+                OneHotEncoder(handle_unknown="ignore"), 
+                ["seller_nip"]  # Tworzymy flagi 0/1 dla znanych NIP-ów
+            )
+        ]
+    )
+
+    # 2. Łączymy transformator i model w jeden spójny rurociąg (Pipeline)
+    pipeline = Pipeline(steps=[
+        ("preprocessor", preprocessor),
+        ("classifier", XGBClassifier(
+            objective="multi:softprob",  # Klasyfikacja wieloklasowa zwracająca prawdopodobieństwa
+            eval_metric="mlogloss",
+            random_state=42
+        ))
+    ])
+
+    return pipeline
+
+
+from sklearn.model_selection import train_test_split
+import pandas as pd
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import LabelEncoder
+
+def train_model(df: pd.DataFrame, pipeline: Pipeline) -> Pipeline:
+    """
+    Dzieli dane, trenuje potok (Pipeline) i zwraca gotowy model.
+    """
+    print("Rozpoczynam przygotowanie danych do treningu...")
+
+    # ZADANIE 1: Wyodrębnij zmienne objaśniające (X) i zmienną docelową (y)
+    # X powinno zawierać tylko kolumny, których używa preprocessor ("seller_nip", "raw_text")
+    # y to nasza etykieta docelowa ("category")
+    X = df[["seller_nip", "raw_text"]]
+    y = df["category"]
+
+    label_encoder = LabelEncoder()
+    y_encoded = label_encoder.fit_transform(y)  # Zamienia napisy na [0, 1, 2, 3]
+    
+    # ZADANIE 2: Podziel dane na zbiór treningowy (80%) i testowy (20%)
+    # Użyj funkcji train_test_split. Pamiętaj o dodaniu parametru random_state=42,
+    # aby przy każdym uruchomieniu podział był dokładnie taki sam.
+    X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=0.2, random_state=42, stratify=y_encoded) #stratify odpowiada za to aby byly zachowane proprocje w danych treningowych i testowych 
+
+    print(f"Dane podzielone. Rozmiar zbioru treningowego: {len(X_train)} wierszy.")
+    print("Rozpoczynam trening modelu XGBoost (TF-IDF + OneHot -> XGB)...")
+
+    # ZADANIE 3: Wytrenuj rurociąg na danych treningowych
+    pipeline = pipeline.fit(X_train,y_train)
+
+    # ZADANIE 4: Oceń model na danych testowych (tzw. "egzamin")
+    # Użyj metody .score() na swoim pipeline, przekazując dane testowe, aby uzyskać dokładność (accuracy)
+    accuracy = pipeline.score(X_test, y_test)
+    
+    print(f"Trening zakończony! Dokładność na zbiorze testowym: {accuracy * 100:.2f}%")
+
+    # Zwracamy gotowy, naładowany wiedzą rurociąg
+    return pipeline, label_encoder
+
+import numpy as np
+import pandas as pd
+
+class ConfidenceRouter:
+    """Odpowiada za decydowanie, czy predykcja XGBoost jest wystarczająco pewna."""
+
+    def __init__(self, model_bundle: dict, confidence_threshold: float = 0.85):
+        # model_bundle to słownik, który zapisaliśmy: {"pipeline": ..., "classes": ...}
+        self.pipeline = model_bundle["pipeline"]
+        self.classes = model_bundle["classes"]
+        self.threshold = confidence_threshold
+
+    def route_invoice(self, seller_nip: str, raw_text: str) -> dict:
+        """
+        Ocenia fakturę i zwraca decyzję: AUTO_APPROVED lub ESCALATE_TO_LLM.
+        """
+
+        # ZADANIE 1: Zbuduj DataFrame z jednym wierszem
+        # Pipeline wymaga dokładnie takich samych kolumn jak przy treningu: "seller_nip" oraz "raw_text"
+        input_df = pd.DataFrame([{"seller_nip": seller_nip, "raw_text": raw_text}])
+        
+        # ZADANIE 2: Pobierz rozkład prawdopodobieństw z pipeline
+        # Użyj metody predict_proba() na self.pipeline. Pamiętaj, że zwraca ona tablicę 2D:
+        # np. [[0.1, 0.85, 0.03, 0.02]] - interesuje Cię pierwszy wiersz [0]
+        probabilities = self.pipeline.predict_proba(input_df)[0]
+
+        # ZADANIE 3: Wyznacz zwycięską klasę i jej pewność
+        best_idx = np.argmax(probabilities)
+        confidence = probabilities[best_idx]                   # Wartość prawdopodobieństwa (od 0.0 do 1.0)
+        predicted_category = self.classes[best_idx]            # Odczytaj nazwę z self.classes za pomocą best_idx
+
+        # ZADANIE 4: Logika routingu (warunek progowy)
+        # Jeśli confidence >= self.threshold -> status "AUTO_APPROVED"
+        # W przeciwnym razie -> status "ESCALATE_TO_LLM"
+        if confidence >= self.threshold:
+            status = "AUTO_APPROVED"
+            action = "Księgowanie automatyczne w ERP."
+        else:
+            status = "ESCALATE_TO_LLM"
+            action = "Wymagana weryfikacja (przekierowanie do LLM / człowieka)."
+
+        # Zwracamy czytelny słownik z werdyktem
+        return {
+            "predicted_category": predicted_category,
+            "confidence": round(float(confidence), 4),
+            "status": status,
+            "action": action
+        }
+
+
+
+import joblib  # Wbudowana w scikit-learn biblioteka do zapisu modeli
+
+def main():
+    # 1. Złożenie surowych PDF-ów i CSV w tabelę Pandas
+    df = build_dataset()
+    
+    # 2. Budowa i trening rurociągu ML
+    pipeline = build_pipeline()
+    trained_pipeline, label_encoder = train_model(df, pipeline)
+    
+    # 3. Zapisanie modelu i etykiet klas do pliku
+    model_path = "xgboost_pipeline.pkl"
+    model_artifact = {
+        "pipeline": trained_pipeline,
+        "classes": label_encoder.classes_
+    }
+    joblib.dump(model_artifact, model_path)
+    print(f"Sukces! Gotowy model zapisano na dysku jako: {model_path}\n")
+
+    # ==========================================
+    # TEST ROUTERA PEWNOŚCI (CONFIDENCE ROUTER)
+    # ==========================================
+    print("=" * 60)
+    print("START TESTÓW ROUTERA PEWNOŚCI (Próg akceptacji: 85%)")
+    print("=" * 60)
+
+    router = ConfidenceRouter(model_bundle=model_artifact, confidence_threshold=0.85)
+
+    test_cases = [
+        {
+            "nazwa_testu": "Przypadek 1: Znany dostawca paliwa (Orlen)",
+            "seller_nip": "5261040828",
+            "raw_text": "Faktura VAT: FV/2026/01. Sprzedawca: Orlen Paliwa Sp. z o.o. Pozycja: Olej napędowy Verva. Suma: 350 PLN"
+        },
+        {
+            "nazwa_testu": "Przypadek 2: Znany dostawca IT (Dell)",
+            "seller_nip": "5213456789",
+            "raw_text": "Faktura VAT: FV/2026/99. Sprzedawca: Dell Polska Sp. z o.o. Pozycja: Monitor Dell 27 cali oraz Klawiatura. DO ZAPŁATY: 2400 PLN"
+        },
+        {
+            "nazwa_testu": "Przypadek 3: Nowy, nieznany NIP + mylący opis (Cold Start / Szum)",
+            "seller_nip": "9998887766",
+            "raw_text": "Faktura VAT: FV/2026/777. Sprzedawca: Usługi Ogólne Jan Kowalski. Pozycja: Refaktura kosztów projektu i opłata manipulacyjna"
+        }
+    ]
+
+    for tc in test_cases:
+        result = router.route_invoice(seller_nip=tc["seller_nip"], raw_text=tc["raw_text"])
+        print(f"\n{tc['nazwa_testu']}")
+        print(f"  -> Wykryta kategoria: {result['predicted_category']}")
+        print(f"  -> Pewność modelu:     {result['confidence'] * 100:.2f}%")
+        print(f"  -> Status decyzyjny:   {result['status']}")
+        print(f"  -> Akcja:              {result['action']}")
+
+    print("\n" + "=" * 60)
+
+
+if __name__ == "__main__":
+    main()
+</file>
+
+<file path="src/orchestrator.py">
+import os
+import sys
+
+# Gwarantuje, że Python zawsze widzi pliki z folderu src/
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+import numpy as np
+import json
+import joblib
+import mlflow
+import mlflow.sklearn
+from mlflow.tracking import MlflowClient
+from pydantic import BaseModel
+from typing import Literal
+
+from document_parser import InvoiceParser
+from ml_classifier import ConfidenceRouter
+from llm_agent import LLMFallbackClassifier
+
+#schemat danych
+class ProcessingReport(BaseModel):
+    invoice_number: str
+    seller_nip: str
+    total_gross: float
+    final_category: str
+    final_confidence: float
+    decision_path: Literal["XGBOOST_FAST_TRACK", "LLM_FALLBACK", "MANUAL_REVIEW", "PARSER_REJECTED"]
+    reasoning: str
+    raw_text: str
+
+
+#tworzymy drzewo decyzji
+class InvoicePipelineOrchestrator:
+    def __init__(
+        self, 
+        model_name: str = "smart-invoice-pipeline", 
+        alias: str = "champion", 
+        fallback_pkl: str = "xgboost_pipeline.pkl", 
+        model_bundle_path: str | None = None,   # Dodane dla pełnej wstecznej kompatybilności z UI
+        llm_api_key: str | None = None
+    ):
+        self.parser = InvoiceParser()
+        self.llm = LLMFallbackClassifier(api_key=llm_api_key)
+        
+        # Jeśli UI przekazało stary parametr model_bundle_path, traktujemy go jako fallback
+        target_fallback = model_bundle_path or fallback_pkl
+        
+        # 1. Próba załadowania modelu z chmurowego Model Registry MLflow
+        try:
+            print(f"[MLflow] Pobieranie modelu '{model_name}@{alias}' z rejestru...")
+            model_uri = f"models:/{model_name}@{alias}"
+            pipeline = mlflow.sklearn.load_model(model_uri)
+            
+            # Pobieramy plik classes.json powiązany z tą wersją modelu
+            client = MlflowClient()
+            model_version = client.get_model_version_by_alias(model_name, alias)
+            classes_path = mlflow.artifacts.download_artifacts(
+                run_id=model_version.run_id, 
+                artifact_path="classes.json"
+            )
+            
+            with open(classes_path, "r", encoding="utf-8") as f:
+                classes_data = json.load(f)
+                classes = np.array(classes_data["classes"])
+                
+            model_bundle = {
+                "pipeline": pipeline,
+                "classes": classes
+            }
+            print(f"[MLflow] Pomyślnie załadowano wersję {model_version.version} (@{alias}) z DagsHub.")
+            
+        except Exception as err:
+            print(f"[Ostrzeżenie] Nie udało się pobrać modelu z MLflow ({err}). Używam lokalnego pliku zapasowego: {target_fallback}")
+            model_bundle = joblib.load(target_fallback)
+            
+        self.router = ConfidenceRouter(model_bundle=model_bundle, confidence_threshold=0.85)
+            
+    def process_invoice(self, pdf_path: str) -> ProcessingReport:
+        """ Metoda sterująca przepływem przez wszsytkie kaskady"""
+        try:
+            # 1. Parsowanie PDF
+            invoice = self.parser.parse(pdf_path=pdf_path)
+            
+            # 2. Szybka ścieżka ML (XGBoost)
+            route = self.router.route_invoice(
+                seller_nip=invoice.seller_nip, 
+                raw_text=invoice.raw_text
+            )
+            
+            if route["status"] == "AUTO_APPROVED":
+                return ProcessingReport(
+                    invoice_number = invoice.invoice_number,
+                    seller_nip = invoice.seller_nip,
+                    total_gross = invoice.total_gross,
+                    final_category = route["predicted_category"],
+                    final_confidence = route["confidence"],
+                    decision_path = "XGBOOST_FAST_TRACK",
+                    reasoning = route["action"],
+                    raw_text = invoice.raw_text
+                )
+            else:
+                # 3. Warstwa rezerwowa LLM
+                prompt = self.llm.build_prompt(
+                    raw_text = invoice.raw_text, 
+                    xgboost_guess= route["predicted_category"]
+                )
+               
+                try:
+                    raw_llm_output = self.llm.call_llm(prompt=prompt)
+                    res = self.llm.parse_and_validate(raw_llm_output=raw_llm_output)
+                    
+                    if res.confidence >= 0.75:
+                        return ProcessingReport(
+                            invoice_number = invoice.invoice_number,
+                            seller_nip = invoice.seller_nip,
+                            total_gross = invoice.total_gross,
+                            decision_path="LLM_FALLBACK",
+                            final_category = res.category,
+                            final_confidence= res.confidence,
+                            reasoning = res.reasoning,
+                            raw_text = invoice.raw_text
+                        )
+                    else:
+                        return ProcessingReport(
+                            invoice_number = invoice.invoice_number,
+                            seller_nip = invoice.seller_nip,
+                            total_gross = invoice.total_gross,
+                            decision_path="MANUAL_REVIEW",
+                            final_category = res.category,
+                            final_confidence= res.confidence,
+                            reasoning = f"Niska pewność LLM ({res.confidence * 100:.1f}%). Wymagana weryfikacja człowieka: {res.reasoning}",
+                            raw_text = invoice.raw_text
+                        )
+                
+                except Exception as llm_err:
+                    # Awaria API / błąd walidacji odpowiedzi LLM -> bezpieczny zrzut do weryfikacji manualnej
+                    return ProcessingReport(
+                        invoice_number=invoice.invoice_number,
+                        seller_nip=invoice.seller_nip,
+                        total_gross=invoice.total_gross,
+                        decision_path="MANUAL_REVIEW",
+                        final_category=route["predicted_category"],
+                        final_confidence=route["confidence"],
+                        reasoning=f"Awaria fallbacku LLM ({str(llm_err)}). Skierowano do manualnej weryfikacji.",
+                        raw_text = invoice.raw_text
+                    )        
+                
+        except Exception as e:
+            # Obsługa dokumentów uszkodzonych lub niezgodnych z walidacją
+            return ProcessingReport(
+                invoice_number="UNKNOWN",
+                seller_nip="UNKNOWN",
+                total_gross=0.0,
+                final_category="UNKNOWN",
+                final_confidence=0.0,
+                decision_path = "PARSER_REJECTED",
+                reasoning=f"Błąd walidacji lub parsowania: {str(e)}"
+            )
+            
+            
+import glob
+import os
+
+if __name__ == "__main__":
+    print("=" * 70)
+    print("TEST ORKIESTRATORA Z PRAWDZIWYM API GEMINI")
+    print("=" * 70)
+
+    orchestrator = InvoicePipelineOrchestrator(model_bundle_path="xgboost_pipeline.pkl")
+
+    # Testujemy trudną fakturę 044
+    pdf_path = "data/raw_pdfs/faktura_044.pdf"
+    
+    print(f"\n>>> Przetwarzanie: {pdf_path}")
+    report = orchestrator.process_invoice(pdf_path=pdf_path)
+
+    print(f"    Numer faktury:   {report.invoice_number}")
+    print(f"    NIP sprzedawcy:  {report.seller_nip}")
+    print(f"    Kwota brutto:    {report.total_gross:.2f} PLN")
+    print(f"    Ścieżka decyzji: [ {report.decision_path} ]")
+    print(f"    Kategoria:       {report.final_category} (Pewność: {report.final_confidence * 100:.1f}%)")
+    print(f"    Uzasadnienie:    {report.reasoning}")
+    print("\n" + "=" * 70)
+</file>
+
+<file path="src/train_mlflow.py">
+import pandas as pd
+import numpy as np
+import os
+import joblib
+import mlflow
+from datetime import datetime
+import mlflow.xgboost
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, precision_recall_fscore_support
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import LabelEncoder
+from ml_classifier import build_pipeline
+from dotenv import load_dotenv
+from mlflow.tracking import MlflowClient
+
+load_dotenv()
+
+def load_data(csv_path: str = "data/invoices_dataset.csv") -> pd.DataFrame:
+    data = pd.read_csv(csv_path)
+    print(f"Załadowano dane o wymiarach: {data.shape}")
+    print(data["category"].value_counts())
+    return data
+
+#run gdzie trenuje baseline model
+def train_baseline():
+    mlflow.set_experiment("smart-invoice-classifier")
+    data = load_data()
+    
+    X = data[["seller_nip", "raw_text"]]
+    y = data["category"]
+    
+    #XGBoost potrzebuje miec zakodowane klasy zatem
+    label_encoder = LabelEncoder()
+    y_encoded = label_encoder.fit_transform(y) #koduje klasy
+    X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=0.2, random_state=42, stratify=y_encoded)
+
+    pipeline = build_pipeline()
+    
+    with mlflow.start_run(run_name="baseline_model"):
+        fitted_model = pipeline.fit(X_train, y_train)
+        y_pred = pipeline.predict(X_test)
+        accuracy = accuracy_score(y_true=y_test, y_pred=y_pred)
+        precision, recall, fscore, _ = precision_recall_fscore_support(y_true=y_test, y_pred=y_pred, average="macro")
+        mlflow.log_metrics({"accuracy": accuracy,
+                            "precision": precision,
+                            "recall": recall,
+                            "f1_macro": fscore})
+        
+        #dodaje zaufane typy zeby nie rzucilo bledem
+        trusted_types = [
+            "sklearn.compose._column_transformer._RemainderColsList",
+            "xgboost.core.Booster",
+            "xgboost.sklearn.XGBClassifier",
+        ]
+
+        # Zapisujemy mapowanie klas do artefaktów runu
+        mlflow.log_dict({"classes": label_encoder.classes_.tolist()}, "classes.json")
+        
+        mlflow.sklearn.log_model(
+            sk_model=fitted_model,
+            name="invoice_pipeline",
+            skops_trusted_types=trusted_types
+        )
+
+#run gdzie trenuje skorygowany model, w MLOpsie wazna zasada jest ze testujemy model NA TYM SAMYM ZESTAWIE DANYCH tzw. golden set, zeby moc go rzetelnie porownac z baseline modelem
+def train_active_learning():
+    mlflow.set_experiment("smart-invoice-classifier")
+    
+    feedback_path = "data/human_feedback.csv"
+    if not os.path.exists(feedback_path) or os.path.getsize(feedback_path) == 0:
+        return {"status": "EMPTY", "message": "Brak pliku poprawek."}
+    
+    human_fb = pd.read_csv(feedback_path)
+    
+    if len(human_fb) == 0:
+        return {"status": "EMPTY", "message": "Brak nowych poprawek w buforze do retreningu."}
+    
+    required_cols = {"seller_nip", "raw_text", "category"} #sprawdzamy czy human_fb ma wymagane kolumny
+    if not required_cols.issubset(human_fb.columns):
+        msg = f"Błąd schematu kolumn! Oczekiwano: {required_cols}, otrzymano: {list(human_fb.columns)}"
+        return {"status": "ERROR", "message": msg}
+        
+    base = load_data()
+    pipeline = build_pipeline()
+    
+    X = base[["seller_nip", "raw_text"]].copy()
+    X["seller_nip"] = X["seller_nip"].astype(str) #czasem seller nip jest intem czasem obiektem i pozniej one hot encoding wariuje
+    y = base["category"]
+    
+    #XGBoost potrzebuje miec zakodowane klasy zatem
+    label_encoder = LabelEncoder()
+    y_encoded = label_encoder.fit_transform(y) #koduje klasy
+    
+    # 3. SPRAWDZENIE CZY KATEGORIE Z FEEDBACKU SĄ ZNANE
+    y_fb = human_fb["category"]
+    unknown_classes = set(y_fb) - set(label_encoder.classes_)
+    if unknown_classes:
+        return {
+            "status": "ERROR", 
+            "message": f"Feedback zawiera nieznane kategorie: {unknown_classes}"
+        }
+        
+    X_train_base, X_test, y_train_base, y_test = train_test_split(X, y_encoded, test_size=0.2, random_state=42, stratify=y_encoded)
+    
+    X_fb = human_fb[["seller_nip", "raw_text"]].copy()
+    X_fb["seller_nip"] = X_fb["seller_nip"].astype(str)
+    
+    X_train_full = pd.concat([X_train_base, X_fb], ignore_index=True)
+    
+    #poki co Xtrain_full ma 820 wierszy a y_train_base 800, musze dolaczyc jeszcze pozostale z human_fb
+    y_fb_encoded = label_encoder.transform(y_fb)
+    y_train_full = np.concatenate([y_train_base, y_fb_encoded]) 
+    #teraz y_train_full ma 820 wierszy
+    
+    weights_base = [1.0] * len(X_train_base)    # lista 800 jedynek
+    weights_fb = [4.0] * len(human_fb)          # lista 20 czwórek
+    sample_weights = weights_base + weights_fb   # złączona lista 820 wag   
+    
+    run_timestamp = datetime.now().strftime('%Y%m%d_%H%M')
+    with mlflow.start_run(run_name=f"active_learning_{run_timestamp}"):
+        MIN_F1_THRESHOLD = 0.98
+        MIN_SLICE_THRESHOLD = 1.0  # Wymagamy 100% poprawności na poprawkach człowieka
+        
+        fitted_model = pipeline.fit(
+            X_train_full, 
+            y_train_full, 
+            classifier__sample_weight=sample_weights
+        )
+        
+        y_pred = pipeline.predict(X_test)
+        accuracy = accuracy_score(y_true=y_test, y_pred=y_pred)
+        precision, recall, fscore, _ = precision_recall_fscore_support(y_true=y_test, y_pred=y_pred, average="macro")
+        
+        mlflow.log_metrics({
+            "accuracy": accuracy,
+            "precision": precision,
+            "recall": recall,
+            "f1_macro": fscore
+        })
+        
+        # 2. SLICE TEST
+        y_fb_pred = pipeline.predict(X_fb)
+        slice_accuracy = accuracy_score(y_true=y_fb_encoded, y_pred=y_fb_pred)
+        mlflow.log_metric("slice_feedback_accuracy", slice_accuracy)
+        print(f"Slice Test (Feedback Accuracy): {slice_accuracy * 100:.1f}%")
+        
+        # Zaufane typy dla skops
+        trusted_types = [
+            "sklearn.compose._column_transformer._RemainderColsList",
+            "xgboost.core.Booster",
+            "xgboost.sklearn.XGBClassifier",
+        ]
+
+        # Zapisujemy mapowanie klas do artefaktów runu
+        mlflow.log_dict({"classes": label_encoder.classes_.tolist()}, "classes.json")
+    
+        # 3. SPRAWDZENIE BRAMKI JAKOŚCIOWEJ
+        if fscore >= MIN_F1_THRESHOLD and slice_accuracy >= MIN_SLICE_THRESHOLD:
+            mlflow.set_tag("quality_gate", "PASSED")
+            
+            # --- BEZPOŚREDNIA REJESTRACJA W MODEL REGISTRY ---
+            model_info = mlflow.sklearn.log_model(
+                sk_model=fitted_model,
+                name="invoice_pipeline",
+                registered_model_name="smart-invoice-pipeline",
+                skops_trusted_types=trusted_types
+            )
+            
+            new_version = model_info.registered_model_version
+            
+            # Przypisanie aliasu champion
+            client = MlflowClient()
+            client.set_registered_model_alias(
+                name="smart-invoice-pipeline",
+                alias="champion",
+                version=str(new_version)
+            )
+            print(f"✅ Bramka zaliczona! Nowy model (Wersja {new_version}) otrzymał alias @champion!")
+            
+            # Lokalna kopia bezpieczeństwa (jako fallback offline)
+            model_path = "xgboost_pipeline.pkl"
+            model_artifact = {
+                "pipeline": fitted_model,
+                "classes": label_encoder.classes_
+            }
+            joblib.dump(model_artifact, model_path)
+            
+            # KROK A: Dopisz poprawki do bazy głównej
+            feedback_to_append = human_fb.copy()
+            feedback_to_append["filename"] = feedback_to_append["invoice_number"].apply(
+                lambda x: f"feedback_{x.replace('/', '_')}.pdf"
+            )
+            base_schema = ["filename", "seller_nip", "raw_text", "category"]
+            feedback_to_append = feedback_to_append[base_schema]
+            feedback_to_append.to_csv("data/invoices_dataset.csv", mode="a", header=False, index=False)
+            print(f"Dopisano {len(feedback_to_append)} wierszy do bazy invoices_dataset.csv.")
+            
+            # KROK B: Utwórz kopię archiwalną
+            archive_dir = "data/archive"
+            os.makedirs(archive_dir, exist_ok=True)
+            timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+            archive_path = os.path.join(archive_dir, f"feedback_{timestamp_str}.csv")
+            human_fb.to_csv(archive_path, index=False)
+            print(f"Zarchiwizowano bufor poprawek w: {archive_path}")
+
+            # KROK C: Wyczyść bufor roboczy
+            empty_df = pd.DataFrame(columns=human_fb.columns)
+            empty_df.to_csv(feedback_path, index=False)
+            print(f"Zresetowano plik roboczy {feedback_path}.")
+            
+            return {
+                "status": "SUCCESS",
+                "message": f"Nowy model (Wersja {new_version}) zaliczył testy i został wdrożony jako @champion.",
+                "f1_macro": fscore,
+                "slice_accuracy": slice_accuracy,
+                "archived_rows": len(feedback_to_append)
+            }
+        else:
+            mlflow.set_tag("quality_gate", "FAILED")
+            print("⚠️️ Model nie przeszedł bramki jakościowej. Pozostajemy przy dotychczasowym @champion.")
+            return {
+                "status": "FAILED",
+                "message": "Nowy model nie spełnił kryteriów jakości (zostajemy przy poprzedniej wersji).",
+                "f1_macro": fscore,
+                "slice_accuracy": slice_accuracy
+            }
+
+if __name__ == "__main__":
+    train_baseline()
+</file>
+
+<file path="tests/__init__.py">
+
+</file>
+
+<file path="tests/test_router.py">
+import pytest
+import numpy as np
+from unittest.mock import MagicMock
+import sys
+import os
+
+sys.path.append(os.path.abspath("src"))
+from ml_classifier import ConfidenceRouter
+
+@pytest.fixture
+def mock_router():
+    """Tworzy instancję ConfidenceRouter z zamockowanym modelem ML."""
+    mock_pipeline = MagicMock()
+    mock_bundle = {
+        "pipeline": mock_pipeline,
+        "classes": np.array(["Biuro", "Paliwo", "IT"])
+    }
+    router = ConfidenceRouter(model_bundle=mock_bundle, confidence_threshold=0.85)
+    return router, mock_pipeline
+
+def test_high_confidence_routes_to_ml(mock_router):
+    router, mock_pipeline = mock_router
+    # Mock zwraca 95% pewności dla klasy "Biuro"
+    mock_pipeline.predict_proba.return_value = np.array([[0.95, 0.03, 0.02]])
+    
+    result = router.route_invoice(seller_nip="1234567890", raw_text="Artykuly biurowe")
+    
+    assert result["action"] == "Księgowanie automatyczne w ERP."
+    assert result["predicted_category"] == "Biuro"
+    assert result["confidence"] >= 0.85
+
+def test_low_confidence_routes_to_fallback(mock_router):
+    router, mock_pipeline = mock_router
+    # Mock zwraca 60% pewności (poniżej progu 85%)
+    mock_pipeline.predict_proba.return_value = np.array([[0.60, 0.25, 0.15]])
+    
+    result = router.route_invoice(seller_nip="9999999999", raw_text="Nieznana usługa")
+    
+    assert result["action"] == "Wymagana weryfikacja (przekierowanie do LLM / człowieka)."
+    assert result["confidence"] < 0.85
+</file>
+
+<file path=".dockerignore">
+.venv
+.env
+.git
+__pycache__
+mlruns
+mlflow.db
+data/archive
+*.pyc
+.pytest_cache
+</file>
+
+<file path=".gitignore">
+.venv/
+__pycache__/
+*.pyc
+.env
+.pytest_cache/
+</file>
+
+<file path="docker-compose.yml">
+services:
+  app:
+    build: .
+    container_name: invoice-app
+    ports:
+      - "8501:8501"
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - ./xgboost_pipeline.pkl:/app/xgboost_pipeline.pkl
+    restart: unless-stopped
+</file>
+
+<file path="Dockerfile">
+# 1. Wybór lekkiego, stabilnego obrazu bazowego Pythona
+FROM python:3.11-slim
+
+# 2. Ustawienia środowiska Pythona:
+# - PYTHONDONTWRITEBYTECODE: nie śmiecimy plikami .pyc w kontenerze
+# - PYTHONUNBUFFERED: logi z print/logging trafiają do konsoli natychmiast bez buforowania
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+# 3. Ustawienie głównego katalogu roboczego w kontenerze
+WORKDIR /app
+
+# 4. Kopiujemy sam plik z bibliotekami (dla Layer Cachingu), zeby nie pobierac za kazda zmiana kodu tego samego requirements.txt
+COPY requirements.txt .
+
+# 5. Instalacja zależności bez zapisywania zbędnego cache pip
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# 6. Kopiujemy cały kod projektu do kontenera (.dockerignore odrzuci śmieci)
+COPY . .
+
+# 7. Deklaracja portu Streamlita
+EXPOSE 7860
+
+# 8. Polecenie startowe aplikacji (nasłuchiwanie na 0.0.0.0 jest kluczowe bo bedziemy deployowac streamlita)
+CMD ["streamlit", "run", "app/main_ui.py", "--server.port=7860", "--server.address=0.0.0.0"]
+</file>
+
+<file path="LICENSE">
+MIT License
+
+Copyright (c) 2026 Patryk Kubik
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+</file>
+
+<file path="README.md">
+Przygotowałem dla Ciebie profesjonalny plik **`README.md`**, który idealnie podsumowuje cały nasz projekt, jego architekturę oraz stack technologiczny. Taki dokument będzie świetnie wyglądał w Twoim portfolio na GitHubie.
+
+Oto kompletna treść pliku `README.md` oparta na Twoich plikach źródłowych i wcześniejszych ustaleniach:
+
+---
+
+```markdown
+# 📄 Smart Invoice IDP (Intelligent Document Processing)
+
+System do automatycznej klasyfikacji i ekstrakcji danych z faktur oparty na hybrydowym podejściu (Machine Learning + LLM). Projekt łączy szybkość klasycznych modeli ML (XGBoost) z potęgą dużych modeli językowych (Google Gemini) w przypadku skomplikowanych lub niepewnych dokumentów.
+
+## 🚀 Główne funkcjonalności
+
+*   **Hybrydowy Router Decyzyjny (`ConfidenceRouter`):** System wykorzystuje algorytm klasyfikacji XGBoost[cite: 9]. Gdy pewność modelu spada poniżej ustalonego progu, system automatycznie przekierowuje fakturę do analizy.
+*   **LLM Fallback:** Awaryjna klasyfikacja dokumentów z wykorzystaniem nowoczesnego API `google-genai` (Google Gemini)[cite: 9].
+*   **Active Learning & Model Registry:** System automatycznie uczy się na ludzkich poprawkach. Po przejściu testów jakościowych (F1-score, Slice Test), nowy model jest rejestrowany w chmurowym MLflow (DagsHub) i automatycznie wdrażany jako produkcyjny `@champion`[cite: 9].
+*   **Ekstrakcja PDF:** Przetwarzanie i walidacja danych z dokumentów odbywa się przy pomocy bibliotek `pdfplumber` oraz `pydantic`[cite: 9].
+*   **Konteneryzacja:** Aplikacja jest w 100% zintegrowana ze środowiskiem Docker[cite: 5]. Posiada gotowy plik `docker-compose.yml` zapewniający łatwe uruchamianie[cite: 4].
+
+## 🛠️ Stack Technologiczny
+
+*   **Język:** Python 3.11[cite: 5]
+*   **Interfejs Użytkownika:** Streamlit[cite: 9]
+*   **Machine Learning:** scikit-learn (wersja 1.5.1), XGBoost (wersja 2.1.1)[cite: 9]
+*   **MLOps:** MLflow (do logowania eksperymentów i Model Registry), skops[cite: 9]
+*   **LLM:** SDK `google-genai`[cite: 9]
+*   **Testowanie:** Pytest[cite: 9]
+*   **Środowisko / Wdrożenie:** Docker[cite: 5], Docker Compose[cite: 4], Streamlit Community Cloud / Hugging Face Spaces.
+
+## 📂 Struktura Projektu (Kluczowe pliki)
+
+*   `src/` - Główny kod źródłowy aplikacji (interfejs, routery, parsery PDF).
+*   `tests/` - Skrypty testów jednostkowych (uruchamiane przez bibliotekę `pytest`[cite: 9]).
+*   `data/` - Zmontowany wolumen Dockera na zestawy danych, bufor poprawek oraz archiwum[cite: 4].
+*   `data/archive/` - Automatyczne kopie zapasowe bufora poprawek po retreningu[cite: 2].
+*   `xgboost_pipeline.pkl` - Lokalny plik awaryjny (fallback) montowany do kontenera na wypadek braku łączności z chmurą[cite: 4].
+*   `.env` - Plik ze zmiennymi środowiskowymi (ignorowany w repozytorium przez `.gitignore`[cite: 3]).
+
+## ⚙️ Uruchomienie lokalne
+
+1. **Sklonuj repozytorium:**
+   ```bash
+   git clone [https://github.com/Patryniuuu/smart-invoice-idp.git](https://github.com/Patryniuuu/smart-invoice-idp.git)
+   cd smart-invoice-idp
+
+```
+
+2. **Skonfiguruj środowisko:**
+Utwórz plik `.env` w głównym katalogu projektu i uzupełnij go swoimi kluczami autoryzacyjnymi:
+
+
+```toml
+MLFLOW_TRACKING_URI="[https://dagshub.com/Patryniuuu/smart-invoice-idp.mlflow](https://dagshub.com/Patryniuuu/smart-invoice-idp.mlflow)"
+MLFLOW_TRACKING_USERNAME="twoj_login"
+MLFLOW_TRACKING_PASSWORD="twoj_token"
+GEMINI_API_KEY="twoj_klucz_gemini"
+
+```
+
+
+3. **Uruchom system przez Docker Compose:**
+Zbuduj i uruchom kontener o nazwie `invoice-app`:
+
+
+```bash
+docker compose up --build
+
+```
+
+
+Aplikacja automatycznie zmapuje porty i będzie dostępna pod adresem `http://localhost:8501`. Kontener jest skonfigurowany do automatycznego restartu w przypadku błędu (`restart: unless-stopped`).
+
+
+
+## 🧪 Testy Jednostkowe
+
+Logika biznesowa routera i bramek decyzyjnych jest pokryta automatycznymi testami jednostkowymi. Aby je uruchomić, użyj polecenia:
+
+```bash
+pytest -v
+
+```
+
+(Katalogi pamięci podręcznej testów `.pytest_cache/` nie są śledzone przez system kontroli wersji).
+
+## ☁️ Wdrożenie w chmurze (Deploy)
+
+Projekt jest przystosowany do darmowego wdrażania na dwóch platformach:
+
+1. **Streamlit Community Cloud:** Automatyczny deploy prosto z gałęzi `main`.
+2. **Hugging Face Spaces:** Aplikacja zawiera zoptymalizowany pod tym kątem `Dockerfile`, który natywnie uruchamia serwer na porcie `7860` i nasłuchuje na adresie `0.0.0.0`. Wewnątrz kontenera zablokowane jest tworzenie plików bytecode `.pyc` (`PYTHONDONTWRITEBYTECODE=1`) oraz włączone jest natychmiastowe strumieniowanie logów (`PYTHONUNBUFFERED=1`).
+
+
+
+## 📜 Licencja
+
+Projekt jest udostępniany na warunkach licencji **MIT**.
+Copyright (c) 2026 Patryk Kubik. Szczegóły znajdują się w pliku `LICENSE`.
+
+```
+
+***
+
+Plik jest sformatowany, uwzględnia specyfikę działania portów z Dockera oraz wykorzystanie bibliotek wyszczególnionych w Twoich plikach systemowych. Wystarczy go teraz skopiować, zapisać jako `README.md` w głównym katalogu projektu i wysłać na GitHuba komendami:
+
+```powershell
+git add README.md
+git commit -m "Add professional README"
+git push origin main
+
+```
+</file>
+
+<file path="requirements.txt">
+# Interfejs aplikacji
+streamlit
+
+# Przetwarzanie i walidacja danych
+pandas
+numpy
+pydantic>=2.0.0
+python-dotenv
+
+# Praca z dokumentami PDF
+pdfplumber
+reportlab
+faker
+
+# Uczenie maszynowe
+scikit-learn==1.5.1
+xgboost==2.1.1
+joblib
+
+# MLOps i Rejestr Modeli
+mlflow
+skops
+
+# Integracja z LLM (Nowe SDK Google)
+google-genai
+
+pytest
+</file>
+
+</files>

@@ -3,3 +3,6 @@ __pycache__/
 *.pyc
 .env
 .pytest_cache/
+mlruns/
+mlflow.db
+data/database.sqlite
