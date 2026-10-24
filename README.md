@@ -1,65 +1,100 @@
-Przygotowałem dla Ciebie profesjonalny plik **`README.md`**, który idealnie podsumowuje cały nasz projekt, jego architekturę oraz stack technologiczny. Taki dokument będzie świetnie wyglądał w Twoim portfolio na GitHubie.
-
-Oto kompletna treść pliku `README.md` oparta na Twoich plikach źródłowych i wcześniejszych ustaleniach:
-
----
-
-```markdown
 # 📄 Smart Invoice IDP (Intelligent Document Processing)
 
-System do automatycznej klasyfikacji i ekstrakcji danych z faktur oparty na hybrydowym podejściu (Machine Learning + LLM). Projekt łączy szybkość klasycznych modeli ML (XGBoost) z potęgą dużych modeli językowych (Google Gemini) w przypadku skomplikowanych lub niepewnych dokumentów.
+**Live Application:** [https://smart-invoice-idp.streamlit.app/](https://smart-invoice-idp.streamlit.app/)
 
-## 🚀 Główne funkcjonalności
+An automated invoice classification and data extraction system built on a hybrid architecture. The project combines the high-speed processing of classical Machine Learning (XGBoost) with the advanced reasoning capabilities of Large Language Models (Google Gemini) to seamlessly handle complex, ambiguous, or damaged documents.
 
-*   **Hybrydowy Router Decyzyjny (`ConfidenceRouter`):** System wykorzystuje algorytm klasyfikacji XGBoost[cite: 9]. Gdy pewność modelu spada poniżej ustalonego progu, system automatycznie przekierowuje fakturę do analizy.
-*   **LLM Fallback:** Awaryjna klasyfikacja dokumentów z wykorzystaniem nowoczesnego API `google-genai` (Google Gemini)[cite: 9].
-*   **Active Learning & Model Registry:** System automatycznie uczy się na ludzkich poprawkach. Po przejściu testów jakościowych (F1-score, Slice Test), nowy model jest rejestrowany w chmurowym MLflow (DagsHub) i automatycznie wdrażany jako produkcyjny `@champion`[cite: 9].
-*   **Ekstrakcja PDF:** Przetwarzanie i walidacja danych z dokumentów odbywa się przy pomocy bibliotek `pdfplumber` oraz `pydantic`[cite: 9].
-*   **Konteneryzacja:** Aplikacja jest w 100% zintegrowana ze środowiskiem Docker[cite: 5]. Posiada gotowy plik `docker-compose.yml` zapewniający łatwe uruchamianie[cite: 4].
+## 🚀 Core Features
 
-## 🛠️ Stack Technologiczny
+* **Hybrid Decision Router (`ConfidenceRouter`):** Utilizes an XGBoost classification algorithm for lightning-fast processing. If the model's confidence falls below a dynamically adjustable threshold (e.g., 85%), the invoice is automatically escalated to the AI Agent.
 
-*   **Język:** Python 3.11[cite: 5]
-*   **Interfejs Użytkownika:** Streamlit[cite: 9]
-*   **Machine Learning:** scikit-learn (wersja 1.5.1), XGBoost (wersja 2.1.1)[cite: 9]
-*   **MLOps:** MLflow (do logowania eksperymentów i Model Registry), skops[cite: 9]
-*   **LLM:** SDK `google-genai`[cite: 9]
-*   **Testowanie:** Pytest[cite: 9]
-*   **Środowisko / Wdrożenie:** Docker[cite: 5], Docker Compose[cite: 4], Streamlit Community Cloud / Hugging Face Spaces.
 
-## 📂 Struktura Projektu (Kluczowe pliki)
+* **LLM Fallback:** Intelligent document classification using the `google-genai` SDK (Gemini 2.5 Flash) with an exponential backoff retry mechanism for highly unstructured edge cases.
 
-*   `src/` - Główny kod źródłowy aplikacji (interfejs, routery, parsery PDF).
-*   `tests/` - Skrypty testów jednostkowych (uruchamiane przez bibliotekę `pytest`[cite: 9]).
-*   `data/` - Zmontowany wolumen Dockera na zestawy danych, bufor poprawek oraz archiwum[cite: 4].
-*   `data/archive/` - Automatyczne kopie zapasowe bufora poprawek po retreningu[cite: 2].
-*   `xgboost_pipeline.pkl` - Lokalny plik awaryjny (fallback) montowany do kontenera na wypadek braku łączności z chmurą[cite: 4].
-*   `.env` - Plik ze zmiennymi środowiskowymi (ignorowany w repozytorium przez `.gitignore`[cite: 3]).
 
-## ⚙️ Uruchomienie lokalne
+* **Active Learning & Model Registry:** The system continuously learns from human corrections via a Human-in-the-loop queue. After passing strict quality gates (F1-score, Slice Test), the retrained model is automatically registered in a cloud-based MLflow environment (DagsHub) and deployed as the production `@champion`.
 
-1. **Sklonuj repozytorium:**
-   ```bash
-   git clone [https://github.com/Patryniuuu/smart-invoice-idp.git](https://github.com/Patryniuuu/smart-invoice-idp.git)
-   cd smart-invoice-idp
+
+* **PDF Extraction & Validation:** Secure document parsing and strict schema enforcement using `pdfplumber` and `Pydantic`.
+
+
+* **ERP Integration:** Generates clean, standardized CSV exports of automatically approved and human-resolved invoices, omitting technical data for seamless accounting software ingestion.
+
+
+
+## 🛠️ Tech Stack
+
+* **Language:** Python 3.11
+
+
+* **User Interface:** Streamlit
+
+
+* **Machine Learning:** scikit-learn (1.5.1), XGBoost (2.1.1)
+
+
+* **MLOps:** MLflow (DagsHub), skops, joblib
+
+
+* **LLM Integration:** `google-genai` SDK
+
+
+* **Data Validation:** Pydantic (>=2.0.0), Pandas, Numpy
+
+
+* **Deployment:** Docker, Docker Compose, Streamlit Community Cloud
+
+
+
+## 📂 Project Structure
+
+* `app/main_ui.py` - Main Streamlit interface and application entry point.
+
+
+* `src/orchestrator.py` - Core pipeline controller managing the cascade from PDF extraction to XGBoost and LLM routing.
+
+
+* `src/ml_classifier.py` - XGBoost pipeline definition and `ConfidenceRouter` logic.
+
+
+* `src/llm_agent.py` - AI agent configuration, prompt engineering, and JSON validation.
+
+
+* `src/train_mlflow.py` - Active learning logic, model retraining, and MLflow registry integration.
+
+
+* `data/` - Mapped Docker volume for human feedback buffers, dataset archives, and raw PDFs.
+
+
+* `xgboost_pipeline.pkl` - Local fallback model utilized if the cloud registry is unreachable.
+
+
+
+## ⚙️ Local Setup & Execution
+
+1. **Clone the repository:**
+```bash
+git clone https://github.com/Patryniuuu/smart-invoice-idp.git
+cd smart-invoice-idp
 
 ```
 
-2. **Skonfiguruj środowisko:**
-Utwórz plik `.env` w głównym katalogu projektu i uzupełnij go swoimi kluczami autoryzacyjnymi:
+
+2. **Environment Configuration:**
+Create a `.env` file in the root directory and add your authentication keys (this file is excluded via `.gitignore`):
 
 
 ```toml
-MLFLOW_TRACKING_URI="[https://dagshub.com/Patryniuuu/smart-invoice-idp.mlflow](https://dagshub.com/Patryniuuu/smart-invoice-idp.mlflow)"
-MLFLOW_TRACKING_USERNAME="twoj_login"
-MLFLOW_TRACKING_PASSWORD="twoj_token"
-GEMINI_API_KEY="twoj_klucz_gemini"
+MLFLOW_TRACKING_URI="https://dagshub.com/Patryniuuu/smart-invoice-idp.mlflow"
+MLFLOW_TRACKING_USERNAME="your_username"
+MLFLOW_TRACKING_PASSWORD="your_token"
+GEMINI_API_KEY="your_gemini_api_key"
 
 ```
 
 
-3. **Uruchom system przez Docker Compose:**
-Zbuduj i uruchom kontener o nazwie `invoice-app`:
+3. **Run via Docker Compose:**
+Build and launch the `invoice-app` container:
 
 
 ```bash
@@ -68,44 +103,24 @@ docker compose up --build
 ```
 
 
-Aplikacja automatycznie zmapuje porty i będzie dostępna pod adresem `http://localhost:8501`. Kontener jest skonfigurowany do automatycznego restartu w przypadku błędu (`restart: unless-stopped`).
+The application will be accessible at `http://localhost:8501`.
 
 
 
-## 🧪 Testy Jednostkowe
+## 🧪 Testing
 
-Logika biznesowa routera i bramek decyzyjnych jest pokryta automatycznymi testami jednostkowymi. Aby je uruchomić, użyj polecenia:
+The business logic of the decision router and LLM parser is covered by automated unit tests. To run the test suite, execute:
 
 ```bash
 pytest -v
 
 ```
 
-(Katalogi pamięci podręcznej testów `.pytest_cache/` nie są śledzone przez system kontroli wersji).
+## ☁️ Cloud Deployment
 
-## ☁️ Wdrożenie w chmurze (Deploy)
+The project is fully optimized for **Streamlit Community Cloud**. It utilizes the cloud-native `Secrets` management (TOML format) to securely store API keys and MLflow credentials without requiring a local `.env` file. The deployment triggers automatically from the `main` branch.
 
-Projekt jest przystosowany do darmowego wdrażania na dwóch platformach:
+## 📜 License
 
-1. **Streamlit Community Cloud:** Automatyczny deploy prosto z gałęzi `main`.
-2. **Hugging Face Spaces:** Aplikacja zawiera zoptymalizowany pod tym kątem `Dockerfile`, który natywnie uruchamia serwer na porcie `7860` i nasłuchuje na adresie `0.0.0.0`. Wewnątrz kontenera zablokowane jest tworzenie plików bytecode `.pyc` (`PYTHONDONTWRITEBYTECODE=1`) oraz włączone jest natychmiastowe strumieniowanie logów (`PYTHONUNBUFFERED=1`).
-
-
-
-## 📜 Licencja
-
-Projekt jest udostępniany na warunkach licencji **MIT**.
-Copyright (c) 2026 Patryk Kubik. Szczegóły znajdują się w pliku `LICENSE`.
-
-```
-
-***
-
-Plik jest sformatowany, uwzględnia specyfikę działania portów z Dockera oraz wykorzystanie bibliotek wyszczególnionych w Twoich plikach systemowych. Wystarczy go teraz skopiować, zapisać jako `README.md` w głównym katalogu projektu i wysłać na GitHuba komendami:
-
-```powershell
-git add README.md
-git commit -m "Add professional README"
-git push origin main
-
-```
+This project is licensed under the **MIT License**.
+Copyright (c) 2026 Patryk Kubik. See the `LICENSE` file for more details.
