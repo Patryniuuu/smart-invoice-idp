@@ -4,7 +4,12 @@ import tempfile
 import base64
 import streamlit as st
 import pandas as pd
-from dotenv import load_dotenv
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass # Na Streamlit Cloud korzystamy ze wbudowanych Secrets
 
 # 1. Środowisko i ścieżki importu
 load_dotenv()
